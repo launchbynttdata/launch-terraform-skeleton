@@ -1,0 +1,21 @@
+_answers_file: ".copier-answers.yml"
+_subdirectory: "template"
+
+# Files listed here will never be overwritten in downstream repositories if they exist.
+_skip_if_exists:
+  - NOTICE
+  - LICENSE
+
+# Excluded files are not copied out of the source folder.
+_exclude:
+  - README.md
+
+# Once all repositories are migrated, these can be removed.
+_tasks:
+  # Remove the legacy TF workflows if they exist
+  - command: "rm -f .github/workflows/increment_tagged_version.yaml"
+  - command: "rm -f .github/workflows/lint-terraform.yaml"
+  - command: "rm -f .github/workflows/validate-branch-name.yaml"
+  # Remove the cloud-specific TF workflows if they exist
+  - command: "rm -f .github/workflows/pull-request-terraform-check-aws.yml"
+  - command: "rm -f .github/workflows/pull-request-terraform-check-azure.yml"

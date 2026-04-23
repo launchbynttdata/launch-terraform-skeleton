@@ -1,0 +1,24 @@
+name: Update Repository from Skeleton
+
+on:
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight
+  workflow_dispatch:
+    inputs:
+      recopy:
+        description: "Perform a full recopy instead of an incremental update (overwrites
+          all templated files), and re-runs any tasks defined in copier.yml. The
+          resulting PR will require manual review and merging."
+        type: boolean
+        default: false
+
+jobs:
+  update-from-skeleton:
+    name: Update from Skeleton
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-update-from-skeleton.yml@feat/unify-provider-auth
+    with:
+      recopy: ${{ github.event.inputs.recopy == 'true' }}
+    secrets: inherit # pragma: allowlist secret

@@ -1,0 +1,14 @@
+name: Dependabot Auto-Merge
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  dependabot-automerge:
+    name: Dependabot Auto-Merge
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-dependabot-automerge.yml@feat/unify-provider-auth
+    secrets: inherit # pragma: allowlist secret

@@ -1,0 +1,65 @@
+---
+name-template: "$RESOLVED_VERSION"
+tag-template: "$RESOLVED_VERSION"
+template: |
+  # Changelog
+
+  $CHANGES
+
+  ---
+
+  See details of [all code changes](https://github.com/$OWNER/$REPOSITORY/compare/$PREVIOUS_TAG...$RESOLVED_VERSION) since previous release.
+
+categories:
+  - title: ":warning: Breaking Changes"
+    labels:
+      - "breaking change"
+  - title: "🚀 Features"
+    labels:
+      - "feature"
+  - title: "🔧 Fixes"
+    collapse-after: 3
+    labels:
+      - "fix"
+  - title: "📝 Documentation"
+    collapse-after: 3
+    labels:
+      - "documentation"
+  - title: "🧪 Test"
+    collapse-after: 3
+    labels:
+      - "test"
+  - title: "⚙️ CI/CD"
+    collapse-after: 3
+    labels:
+      - "CI/CD"
+  - title: "♻️ Refactor"
+    collapse-after: 3
+    labels:
+      - "refactor"
+  - title: "⚡ Performance"
+    collapse-after: 3
+    labels:
+      - "performance"
+  - title: "🧹 Chore"
+    collapse-after: 3
+    labels:
+      - "chore"
+  - title: "⏪ Revert"
+    collapse-after: 3
+    labels:
+      - "revert"
+
+change-template: "- $TITLE @$AUTHOR (#$NUMBER)"
+
+version-resolver:
+  major:
+    labels:
+      - "breaking change"
+  minor:
+    labels:
+      - "feature"
+  default: patch
+
+exclude-labels:
+  - "skip-changelog"

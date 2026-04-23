@@ -1,0 +1,14 @@
+name: Validate PR Title
+
+on:
+  pull_request:
+    types: [opened, reopened, edited]
+
+jobs:
+  validate-title:
+    name: Validate PR Title
+    permissions:
+      contents: read
+      pull-requests: write
+      statuses: write
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-conventional-commit-title.yml@feat/unify-provider-auth

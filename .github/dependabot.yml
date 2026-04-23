@@ -1,0 +1,15 @@
+version: 2
+
+multi-ecosystem-groups:
+  workflows:
+    commit-message:
+      prefix: "chore"
+      include: scope
+    schedule:
+      interval: "weekly"
+
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    multi-ecosystem-group: "workflows"
+    patterns: ["*"]
