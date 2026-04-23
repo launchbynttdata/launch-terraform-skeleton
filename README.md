@@ -4,7 +4,7 @@ This skeleton defines the set of core configurations and tools that apply to all
 
 These are intended to be evolved and updated over time. For initial Terraform configurations that are applied when a new repository is created, see the [launch-terraform-template](https://github.com/launchbynttdata/launch-terraform-template) repository.
 
-![repo-map-skeleton.jpg](repo-map-skeleton.jpg)
+![repo-map-skeleton.jpg](docs/images/repo-map-skeleton.jpg)
 
 ## How this repository works
 
