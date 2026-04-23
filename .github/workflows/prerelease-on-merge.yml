@@ -1,0 +1,27 @@
+name: Publish Prerelease
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release-candidate-on-merge:
+    name: "Create and Publish Prerelease on Merge"
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@feat/prerelease-on-merge
+    with:
+      prerelease_identifier: "rc"
+    secrets: inherit # pragma: allowlist secret
+
+  release-draft-on-merge:
+    name: "Draft Release on Merge"
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@feat/prerelease-on-merge
+    with:
+      publish: false
+    secrets: inherit # pragma: allowlist secret

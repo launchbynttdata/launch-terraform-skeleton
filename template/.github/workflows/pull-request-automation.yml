@@ -1,0 +1,14 @@
+name: Automated Approvals
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize ]
+
+jobs:
+  automated-approvals:
+    name: Automated Approvals
+    permissions:
+      pull-requests: read
+      contents: read
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-automated-approvals.yml@feat/unify-provider-auth
+    secrets: inherit # pragma: allowlist secret
