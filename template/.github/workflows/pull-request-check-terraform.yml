@@ -16,6 +16,6 @@ jobs:
     uses: launchbynttdata/launch-workflows/.github/workflows/reusable-terraform-check.yml@feat/unify-provider-auth
     with:
       auth_method: ${{ startsWith(github.event.repository.name, 'tf-aws') && 'aws' ||
-        startsWith(github.event.repository.name, 'tf-az') && 'azure' || 'none'
+        startsWith(github.event.repository.name, 'tf-az') && 'azure' || ''
         }}
     secrets: inherit # pragma: allowlist secret
