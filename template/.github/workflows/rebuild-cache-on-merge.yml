@@ -1,4 +1,4 @@
-name: Rebuild Pre-Commit Cache
+name: Rebuild Caches on Merge
 
 on:
   push:
@@ -6,11 +6,12 @@ on:
       - main
     paths:
       - ".pre-commit-config.yaml"
+      - ".tool-versions"
   workflow_dispatch:
 
 jobs:
   pre-commit:
-    name: Rebuild Pre-Commit Cache
+    name: Rebuild Caches
     permissions:
       contents: read
     runs-on: ubuntu-latest
@@ -38,9 +39,18 @@ jobs:
         name: Run pre-commit checks
         run: uv run pre-commit run --all-files
 
-      - id: save-cache
+      - id: save-pre-commit-cache
         name: Save pre-commit cache
         uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
         with:
           path: ~/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      - id: save-asdf-cache
+        name: Save asdf cache
+        uses: actions/cache/save@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: |
+            ~/.asdf/installs
+            ~/.asdf/plugins
+          key: ${{ runner.os }}-asdf-${{ hashFiles('.tool-versions') }}
