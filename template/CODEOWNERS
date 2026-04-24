@@ -1,1 +1,3 @@
-*   @launchbynttdata/terraform-administrators
+*.tf       @launchbynttdata/terraform-administrators
+tests      @launchbynttdata/terraform-administrators
+examples   @launchbynttdata/terraform-administrators
