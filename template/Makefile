@@ -12,11 +12,6 @@
 
 SHELL := /bin/bash
 
-# Include custom values from .lcafenv. Repository root is assumed to be the working directory.
-# Including overriding values in this file is preferred over modifying the contents below.
-LCAF_ENV_FILE = .lcafenv
--include $(LCAF_ENV_FILE)
-
 JOB_NAME ?= job
 JOB_EMAIL ?= job@job.job
 
