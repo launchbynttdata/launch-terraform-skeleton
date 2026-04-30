@@ -148,7 +148,7 @@ provider \"azuredevops\" {}\n
 endef
 
 define github_provider
-provider \"github\" {\n  owner = "$(GITHUB_OWNER)"\n}\n
+provider \"github\" {\n  owner = \"$(GITHUB_OWNER)\"\n}\n
 endef
 
 define provider_file_path
