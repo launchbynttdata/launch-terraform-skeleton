@@ -14,5 +14,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@feat/unify-provider-auth
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@0.15.0
     secrets: inherit # pragma: allowlist secret
