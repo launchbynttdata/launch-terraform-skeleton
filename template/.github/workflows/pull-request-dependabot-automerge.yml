@@ -10,5 +10,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-dependabot-automerge.yml@feat/unify-provider-auth
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-dependabot-automerge.yml@0.15.0
     secrets: inherit # pragma: allowlist secret

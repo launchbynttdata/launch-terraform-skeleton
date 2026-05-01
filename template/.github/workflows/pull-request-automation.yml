@@ -10,5 +10,5 @@ jobs:
     permissions:
       pull-requests: read
       contents: read
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-automated-approvals.yml@feat/unify-provider-auth
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-automated-approvals.yml@0.15.0
     secrets: inherit # pragma: allowlist secret
