@@ -1,6 +1,6 @@
 ---
 name: Terraform Primitive Module Creator
-description: Agent that creates a Terraform Primitive Module from a skeleton repository to meet our standards.
+description: Agent that creates a Terraform Primitive Module from a template repository to meet our standards.
 ---
 
 <!-- version: 1.9 -->
@@ -22,7 +22,7 @@ This document provides context and instructions for AI coding assistants working
 - **1.1** – Added cloud provider API verification patterns (Azure, AWS, GCP) to Terratest guidance; tests must now verify real resource state via provider SDKs, not just Terraform outputs
 - **1.0** – Initial release
 
-> **For agents working in the skeleton repo (`launch-terraform-skeleton`):** If you modify this file, update the `<!-- version -->` comment at the top and add a changelog entry here. Bump the minor version (e.g. 1.1 → 1.2) for new guidance or clarifications; bump the major version (e.g. 1.x → 2.0) for changes that would require significant rework of existing modules.
+> **For agents working in the skeleton repo (`launch-terraform-skeleton`):** If you modify this file, update the `<!-- version -->` comment at the top and add a changelog entry here. Bump the minor version (e.g. 1.1 → 1.2) for new guidance or clarifications; bump the major version (e.g. 1.x → 2.0) for changes that would require significant rework of existing modules. Never make changes to older entries in the changelog, add new entries at the top.
 
 > **Maintenance rule — keep guidance generic.** This guide applies to ALL primitive modules across all cloud providers, not just the resource type used in any particular experiment. When updating this file, do not embed service-specific attribute names (e.g., `VisibilityTimeout`, `KmsMasterKeyId`, `BucketName`) into patterns meant to be universal. If a concrete example helps clarify a pattern, show one per cloud provider and label each clearly (e.g., "Azure example," "AWS example," "GCP example"). Prefer generic placeholders like `<resource-specific attribute>` in WRONG/RIGHT comparisons and checklists.
 
@@ -48,7 +48,7 @@ You are most likely helping create or modify a **primitive module**.
 
 3. **Security settings MUST be verified via the cloud API in tests.** If the module configures encryption, the test must assert that encryption is enabled via the provider SDK — not just check that a Terraform output is non-empty. Use `require` (not a conditional `if ok`) to ensure the security attribute is present. See [Security Verification in Tests](#security-verification-in-tests).
 
-4. **README.md TODO placeholders MUST be removed.** Search for `TODO:` in ALL files. The skeleton's `TODO: INSERT DOC LINK ABOUT HOOKS` is the most common missed placeholder. Either replace with real content or remove the TODO text entirely.
+4. **README.md TODO placeholders MUST be removed.** Search for `TODO:` in ALL files. The template's `TODO: INSERT DOC LINK ABOUT HOOKS` is the most common missed placeholder. Either replace with real content or remove the TODO text entirely.
 
 5. **The terraform-docs section in README.md MUST NOT be empty.** Run `terraform-docs markdown table --output-file README.md --output-mode inject .` or manually populate the section. An empty `<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` / `<!-- END OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` block is a defect.
 
@@ -58,7 +58,7 @@ You are most likely helping create or modify a **primitive module**.
 
 8. **The example MUST use the most secure configuration.** The example must demonstrate the secure pattern for its resource type (e.g., create a KMS/CMEK key module and pass it rather than relying on provider-managed default encryption). The example is the reference implementation. Run `make check` before considering the module complete — common rules include: AWS SQS queues require KMS encryption; S3 buckets require encryption; etc.
 
-9. **Skeleton remnants MUST be completely removed.** This includes: template comments in `tests/testimpl/types.go`, TODO placeholders in README.md, and all references to `launch-terraform-template` outside of `.github/agents/`. See [Skeleton Cleanup Checklist](#skeleton-cleanup-checklist).
+9. **Template remnants MUST be completely removed.** This includes: template comments in `tests/testimpl/types.go`, TODO placeholders in README.md, and all references to `launch-terraform-template` outside of `.github/agents/`. See [Template Cleanup Checklist](#template-cleanup-checklist).
 
 10. **Output `id` description must be accurate.** For resources where `id` equals another attribute (e.g., a queue's `id` is the same as its `url`, or a storage account's `id` is the full ARM resource path), use a clarifying description like `"The ID of the resource (same as the <other attribute>)."` — do not use the exact same description for both outputs.
 
@@ -947,7 +947,7 @@ This pattern applies to any security attribute — encryption keys, TLS settings
 
 ### Functional vs Readonly Tests
 
-The skeleton provides two test directories:
+The template provides two test directories:
 - `tests/post_deploy_functional/` — Full lifecycle test: creates infrastructure, runs assertions (including write operations that exercise the resource), then destroys.
 - `tests/post_deploy_functional_readonly/` — Read-only verification: assumes infrastructure already exists, performs ONLY read operations (API queries, attribute checks). **Must NOT write data, create resources, or modify state.**
 
@@ -1140,16 +1140,16 @@ When asked to create a new primitive module, follow this process:
 ```
    This populates the `<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` section with auto-generated inputs/outputs tables. **Do NOT leave this section empty.** If `terraform-docs` is not available, manually populate the section with an inputs table and outputs table matching the module's `variables.tf` and `outputs.tf`.
 
-9. **Clean up skeleton references.** Carefully check through ALL files and remove references to the skeleton and templates. See the Skeleton Cleanup Checklist below for a complete list of items to check.
+9. **Clean up template references.** Carefully check through ALL files and remove references to the template. See the Template Cleanup Checklist below for a complete list of items to check.
 
 
-## Skeleton Cleanup Checklist
+## Template Cleanup Checklist
 
-When transforming the skeleton into a new primitive module, complete ALL of these steps:
+When transforming the template into a new primitive module, complete ALL of these steps:
 
 ### Files to Remove or Transform
 - [ ] **TEMPLATED_README.md** → Delete after incorporating relevant content into README.md
-- [ ] **`examples/with_cake/`** → Delete skeleton example directory
+- [ ] **`examples/with_cake/`** → Delete template example directory
 
 ### Files to Update
 - [ ] **`go.mod`** → Update the `launch-terraform-template` portion of the `github.com/launchbynttdata/launch-terraform-template` module path to your module name (e.g. `github.com/launchbynttdata/tf-aws-module_primitive-s3_bucket`)
@@ -1199,9 +1199,9 @@ Before considering the module complete, walk through EVERY item below. Each item
 - [ ] Does `examples/complete/variables.tf` define EVERY variable from the root `variables.tf`?
 - [ ] Does `examples/complete/main.tf` pass through ALL those variables to the module?
 - [ ] Does `examples/complete/outputs.tf` expose EVERY output that the tests consume (e.g., `terraform.Output(t, ..., "desired_state")` requires that output)?
-- [ ] Does the example use the most secure configuration (e.g., customer-managed encryption keys, not provider-managed defaults)? (Run `make check` to verify.)
+- [ ] Does the example use the most secure configuration (e.g., customer-managed encryption keys, not provider-managed defaults)? (Verify via review and any engagement-level policy scanner; `make check` covers lint and tests but not policy compliance.)
 
-### Skeleton Cleanup
+### Template Cleanup
 - [ ] Is `TEMPLATED_README.md` deleted?
 - [ ] Is `examples/with_cake/` deleted?
 - [ ] Are there zero references to `launch-terraform-template` outside `.github/agents/`?
