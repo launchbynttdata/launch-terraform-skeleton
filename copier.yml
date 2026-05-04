@@ -19,3 +19,4 @@ _tasks:
   # Remove the cloud-specific TF workflows if they exist
   - command: "rm -f .github/workflows/pull-request-terraform-check-aws.yml"
   - command: "rm -f .github/workflows/pull-request-terraform-check-azure.yml"
+  - command: "rm -f .lcafenv"
