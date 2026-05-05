@@ -10,5 +10,5 @@ jobs:
     permissions:
       pull-requests: read
       contents: read
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-automated-approvals.yml@c57235a204b77b6622a0e99fe29dca5eecf80b2f
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-automated-approvals.yml@1864e70e0f3bc5d98ea126b5cc4245ac9573d884
     secrets: inherit # pragma: allowlist secret
