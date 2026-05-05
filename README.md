@@ -2,35 +2,59 @@
 
 This skeleton defines the set of core configurations and tools that apply to all Launch Terraform modules.
 
-These are intended to be evolved and updated over time. For initial Terraform configurations that are applied when a new repository is created, see the [launch-terraform-template](https://github.com/launchbynttdata/launch-terraform-template) repository.
+```mermaid
+flowchart RL
+    template -->|Pulls latest changes| skeleton
+    primitives -->|Pulls latest changes| skeleton
+    template --->|Used in producing module repositories| modules
+    modules -->|Produces| primitives
 
-![repo-map-skeleton.jpg](docs/images/repo-map-skeleton.jpg)
+    youarehere["<h3>You Are Here</h3>"]
+    youarehere ==> skeleton
+
+    template["<strong><a href="https://github.com/launchbynttdata/launch-terraform-template">launch-terraform-template</a></strong><br/><br/>Implements launch-terraform-skeleton, provides a starting point for expected files that make up a Launch Terraform primitive. This repository is used as a template source when other repositories are created."]
+
+    primitives["<strong><a href="https://github.com/orgs/launchbynttdata/repositories?q=module_primitive">Terraform Primitives</a></strong><br/><br/>Launch's Terraform modules, plus their tests, one per repository. These modules regularly look for updates in launch-terraform-skeleton and autoupdate themselves where possible."]
+
+    modules["<strong><a href="https://github.com/launchbynttdata/launch-terraform-modules">launch-terraform-modules</a></strong><br/><br/>Terragrunt repository defining all of our Terraform primitive modules. Our existing modules will be imported here, our new modules will be configured here going forward."]
+
+    skeleton["<strong><a href="https://github.com/launchbynttdata/launch-terraform-skeleton">launch-terraform-skeleton</a></strong><br><br/>Common workflows and configurations shared by<br/>Terraform modules. Updates to this repository are<br/>consumed by the repositories that implement it<br/>on a regular schedule."]
+```
 
 ## How this repository works
 
-This repository contains a template for the [Copier](https://copier.readthedocs.io/en/stable/) tool. The contents of the [template/](./template/) folder will be copied into a destination Terraform Module repository and kept current by way of our [automated update from skeleton workflow](./template/.github/workflows/update-from-skeleton.yml). This automated workflow checks for updates, applies the update if one is found, and opens a pull request that, if all checks pass, will automatically merge and update the Terraform module with the latest changes. The files delivered by this template shouldn't change very much on a per-repo basis, but Copier is smart enough to be able to detect and merge changes in downstream repositories in many cases. This means that you can safely add items to your .gitignore if your Terraform module generates temporary files that would otherwise be committed, and when changes are published to this skeleton your additions will be preserved.
+This repository is the primary distribution point for updates across the entire Launch Terraform ecosystem. Changes made to CI/CD workflows, tool versions, shared configuration, or module standards propagate automatically to every Terraform primitive repository. Keeping this repository current is the main lever for evolving the ecosystem.
 
-If Copier can't safely merge changes from a given update, it will leave a pull request open on the repository so that a human or agent can address the issues and get the update merged after a manual review.
+### Delivery mechanism
 
-## Template Folder
+The `template/` folder is managed by [Copier](https://copier.readthedocs.io/en/stable/). Everything in `template/` is pushed out to downstream Terraform module repositories and kept current by the [automated update-from-skeleton workflow](./template/.github/workflows/update-from-skeleton.yml). When a new release of this repository is published, that workflow runs in each downstream repository, applies the updated files, and opens a pull request. If all checks pass, the pull request merges automatically with no manual intervention required.
 
-Files contained within the [template](./template/) folder will be updated in the root of the downstream repos when they are changed. This allows us to separate the workflows associated with this repository from the workflows found in a downstream repository. Changes to these files should be made in a way that they are compatible with our entire Terraform ecosystem. Prereleases can be utilized to roll out a change across a subset of repositories.
+Copier is change-aware: it tracks what was previously delivered and merges updates carefully, so per-repository customizations (such as additions to `.gitignore`) are preserved across updates. When Copier cannot safely merge a change -- for example, because a downstream repo has modified a file that was also changed here -- it leaves the pull request open for a human or agent to resolve before merging.
 
-## Release Process
+### What to keep current here
 
-Given that a change here may eventually land in several hundred downstream repositories, it's critical that we have a way to validate our changes before they are rolled out to the entire ecosystem. This repository uses a system of prereleases through GitHub and Copier to provide a rollout to a smaller sample. The full release process looks like this:
+Because this repository drives the ecosystem, it must be kept current. Ongoing maintenance tasks include:
 
-1. A pull request to this repository is opened with a desired change to the templates/ folder.
-2. Once the PR has been reviewed, approved, and all checks are passing, it is merged to the main branch.
-3. The act of merging to the main branch causes two releases to be created:
-    - A prerelease (or release candidate) for the next version is created and published
-    - A full release for the next version is drafted if it does not already exist, but it is not published
-4. The prerelease is evaluated against a subset of the ecosystem to confirm that it behaves as expected
-    - If the prerelease does not perform as expected, further changes are PRed and merged to main, which result in the creation of a new prerelease, which is retested.
-5. Once the prerelease has been validated and works as desired, the drafted release is published, which will encompass all the changes in the prereleases
+- **Workflows**: Sync updated commit SHAs from [launch-workflows](https://github.com/launchbynttdata/launch-workflows) when new or updated workflows are published there.
+- **Tool versions**: Update `.tool-versions` when new versions of Terraform, tflint, terraform-docs, golangci-lint, or other toolchain components should be adopted ecosystem-wide.
+- **Shared configuration**: Evolve `.tflint.hcl`, `.golangci.yaml`, `.pre-commit-config.yaml`, and related files as standards change.
+- **AI agent guidance**: Update agent files (e.g. `primitive-module-creator.agent.md`) to reflect current patterns and tooling.
 
-Be sure to regenerate the release notes prior to publishing the drafted release, to ensure you pick up all of the commits in the release candidates!
+## Release process
 
-## Prerelease Opt-in
+Because a single release here can touch hundreds of downstream repositories, changes are validated incrementally before being rolled out to the full ecosystem using a prerelease (release-candidate) gate.
 
-Prereleases are currently opt-in at the repository level, controlled via a Custom Property. Set the `prerelease` property to "true" on any Terraform module to have the auto-update workflows utilize prereleases.
+1. Open a pull request with changes to the `template/` folder.
+2. Once reviewed, approved, and passing all checks, merge to `main`.
+3. Merging to `main` automatically creates two releases:
+    - A **prerelease** (release candidate) is published immediately.
+    - A **full release** for the same version is created in draft state but not yet published.
+4. The prerelease may be consumed by any repository that has opted in to prereleases. Validate that the change behaves as expected across those repositories.
+    - If issues are found, open additional pull requests, merge them to `main`, and test the resulting new prerelease. Repeat until the change is stable.
+5. Once the prerelease is validated, **publish the drafted full release**. This makes the update available for all downstream repositories.
+
+> **Before publishing the full release,** double-check release notes to ensure that all commits from the release candidates are included.
+
+## Prerelease opt-in
+
+Prereleases are opt-in at the repository level, controlled via a GitHub Custom Property. Following the instructions in the [launch-terraform-modules](https://github.com/launchbynttdata/launch-terraform-modules) repository, set the `prerelease` property to `"true"` on a Terraform primitive repository to have its auto-update workflow track release candidates in addition to full releases. This is the recommended way to test a speculative change against a representative sample of the ecosystem before committing to a full rollout.
