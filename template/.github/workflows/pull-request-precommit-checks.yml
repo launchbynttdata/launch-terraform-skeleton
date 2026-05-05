@@ -68,7 +68,7 @@ jobs:
       - id: set-status-check
         name: Set Status Check
         if: always()
-        uses: launchbynttdata/launch-workflows/.github/actions/update-status-check@1864e70e0f3bc5d98ea126b5cc4245ac9573d884
+        uses: launchbynttdata/launch-workflows/.github/actions/update-status-check@088489d7b5f9ee3e0f63110b7fa5a13f7fd523e2
         with:
           check_name: "Pre-Commit Checks"
           status: ${{ steps.pre-commit.outcome == 'success' && 'success' ||
