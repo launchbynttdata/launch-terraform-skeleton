@@ -14,5 +14,5 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@0.15.0
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@c57235a204b77b6622a0e99fe29dca5eecf80b2f
     secrets: inherit # pragma: allowlist secret
