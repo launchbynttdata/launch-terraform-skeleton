@@ -29,7 +29,7 @@ This repository is the primary distribution point for updates across the entire 
 
 The `template/` folder is managed by [Copier](https://copier.readthedocs.io/en/stable/). Everything in `template/` is pushed out to downstream Terraform module repositories and kept current by the [automated update-from-skeleton workflow](./template/.github/workflows/update-from-skeleton.yml). When a new release of this repository is published, that workflow runs in each downstream repository, applies the updated files, and opens a pull request. If all checks pass, the pull request merges automatically with no manual intervention required.
 
-Copier is change-aware: it tracks what was previously delivered and merges updates carefully, so per-repository customisations (such as additions to `.gitignore`) are preserved across updates. When Copier cannot safely merge a change -- for example, because a downstream repo has modified a file that was also changed here -- it leaves the pull request open for a human or agent to resolve before merging.
+Copier is change-aware: it tracks what was previously delivered and merges updates carefully, so per-repository customizations (such as additions to `.gitignore`) are preserved across updates. When Copier cannot safely merge a change -- for example, because a downstream repo has modified a file that was also changed here -- it leaves the pull request open for a human or agent to resolve before merging.
 
 ### What to keep current here
 
