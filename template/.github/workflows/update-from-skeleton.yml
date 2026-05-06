@@ -18,7 +18,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-update-from-skeleton.yml@c57235a204b77b6622a0e99fe29dca5eecf80b2f
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-update-from-skeleton.yml@088489d7b5f9ee3e0f63110b7fa5a13f7fd523e2
     with:
       recopy: ${{ github.event.inputs.recopy == 'true' }}
     secrets: inherit # pragma: allowlist secret

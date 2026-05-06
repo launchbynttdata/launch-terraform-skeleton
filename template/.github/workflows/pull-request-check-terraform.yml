@@ -13,7 +13,7 @@ jobs:
       pull-requests: read
       id-token: write
       statuses: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-terraform-check.yml@c57235a204b77b6622a0e99fe29dca5eecf80b2f
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-terraform-check.yml@088489d7b5f9ee3e0f63110b7fa5a13f7fd523e2
     with:
       auth_method: ${{ startsWith(github.event.repository.name, 'tf-aws') && 'aws' ||
         startsWith(github.event.repository.name, 'tf-az') && 'azure' || '' }}
