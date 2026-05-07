@@ -63,7 +63,7 @@ jobs:
 
       - id: pre-commit
         name: Run pre-commit checks
-        run: uv run pre-commit run --all-files
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - id: set-status-check
         name: Set Status Check
