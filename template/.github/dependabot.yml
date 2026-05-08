@@ -28,6 +28,8 @@ updates:
       - .github/workflows/pull-request-check-terraform.yml
       - .github/workflows/pull-request-dependabot-automerge.yml
       - .github/workflows/pull-request-label.yml
+      - .github/workflows/pull-request-precommit-checks.yml
+      - .github/workflows/rebuild-cache-on-merge.yml
       - .github/workflows/release-publish.yml
       - .github/workflows/update-from-skeleton.yml
 
