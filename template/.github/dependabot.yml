@@ -1,5 +1,4 @@
 version: 2
-
 multi-ecosystem-groups:
   tests:
     commit-message:
@@ -7,53 +6,29 @@ multi-ecosystem-groups:
       include: scope
     schedule:
       interval: "daily"
-
   workflows:
     commit-message:
       prefix: "chore"
       include: scope
     schedule:
       interval: "daily"
-
 updates:
   - package-ecosystem: "github-actions"
     directory: "/"
     multi-ecosystem-group: "workflows"
-    patterns: ["*"]
+    patterns: [ "*" ]
     exclude-paths:
-      # Workflows delivered through the skeleton update process
-      # should only be updated in the skeleton repo, but any other
-      # workflows that happen to be installed should be updated.
       - .github/workflows/pull-request-automation.yml
       - .github/workflows/pull-request-check-terraform.yml
       - .github/workflows/pull-request-dependabot-automerge.yml
       - .github/workflows/pull-request-label.yml
+      - .github/workflows/pull-request-precommit-checks.yml
+      - .github/workflows/rebuild-cache-on-merge.yml
       - .github/workflows/release-publish.yml
       - .github/workflows/update-from-skeleton.yml
-
   - package-ecosystem: "gomod"
     directory: "/"
     multi-ecosystem-group: "tests"
-    patterns: ["*"]
+    patterns: [ "*" ]
     cooldown:
       default-days: 14
-
-  # Terraform updates are intentionally disabled, as we want to control
-  # the version ranges of Terraform providers through our versions.tf
-  # files.
-
-  # - package-ecosystem: "terraform"
-  #   directory: "/"
-  #   multi-ecosystem-group: "module"
-  #   patterns: ["*"]
-  #   cooldown:
-  #     default-days: 14
-  #   ignore:
-  #     - dependency-name: "hashicorp/*"
-  #       update-types: ["version-update:semver-major"]
-  #     - dependency-name: "microsoft/*"
-  #       update-types: ["version-update:semver-major"]
-  #     - dependency-name: "azure/*"
-  #       update-types: ["version-update:semver-major"]
-  #     - dependency-name: "integrations/*"
-  #       update-types: ["version-update:semver-major"]

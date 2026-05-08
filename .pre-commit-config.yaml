@@ -21,5 +21,14 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        args: ["--baseline", ".secrets.baseline"]
+        args: [ "--baseline", ".secrets.baseline" ]
         exclude: package.lock.json
+  - repo: local
+    hooks:
+      - id: dependabot-workflow-exclude-paths
+        name: Sync dependabot workflow exclude-paths
+        entry: scripts/precommit-template-dependabot-workflow-list.sh
+        language: script
+        files: "(template/\\.github/workflows/.*\\.ya?ml|template/\\.github/dependabot\
+          \\.yml)$"
+        pass_filenames: false
