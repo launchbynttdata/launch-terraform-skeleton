@@ -25,6 +25,16 @@ flowchart RL
 
 This repository is the primary distribution point for updates across the entire Launch Terraform ecosystem. Changes made to CI/CD workflows, tool versions, shared configuration, or module standards propagate automatically to every Terraform primitive repository. Keeping this repository current is the main lever for evolving the ecosystem.
 
+## Pre-Requisites
+
+The following commands should be available on your system:
+
+- `asdf` or `mise`
+- `make`
+- `python3` (for pre-commit)
+
+After cloning this repository, run `make configure` from the root to install all necessary dependencies and ensure your system is set up correctly.
+
 ### Delivery mechanism
 
 The `template/` folder is managed by [Copier](https://copier.readthedocs.io/en/stable/). Everything in `template/` is pushed out to downstream Terraform module repositories and kept current by the [automated update-from-skeleton workflow](./template/.github/workflows/update-from-skeleton.yml). When a new release of this repository is published, that workflow runs in each downstream repository, applies the updated files, and opens a pull request. If all checks pass, the pull request merges automatically with no manual intervention required.
