@@ -1,8 +1,0 @@
-formatter: "markdown table"
-
-sections:
-  hide:
-    - providers
-
-sort:
-  enabled: false
