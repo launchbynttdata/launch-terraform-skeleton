@@ -1,0 +1,252 @@
+name: Render Template Diff
+
+on:
+  pull_request:
+    types: [ opened, reopened, synchronize, ready_for_review ]
+    branches: [ main ]
+    paths:
+      - "template/**"
+      - "copier.yml"
+      - ".github/workflows/pull-request-render-diff.yml"
+
+jobs:
+  render-diff:
+    name: Render Template Diff
+    permissions:
+      pull-requests: write
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - id: checkout-skeleton
+        name: Checkout skeleton (PR branch)
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
+        with:
+          path: skeleton
+
+      - id: checkout-template
+        name: Checkout launch-terraform-template
+        uses: actions/checkout@ff7abcd0c3c05ccf6adc123a8cd1fd4fb30fb493
+        with:
+          repository: launchbynttdata/launch-terraform-template
+          path: template-repo
+
+      - id: get-current-version
+        name: Determine current template version
+        run: |
+          CURRENT_COMMIT=$(grep '^_commit:' template-repo/.copier-answers.yml | awk '{print $2}')
+          echo "current_commit=${CURRENT_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "Current template version: ${CURRENT_COMMIT}"
+
+      - id: setup-python
+        name: Set up Python
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        with:
+          python-version: 3.14
+
+      - id: install-copier
+        name: Install copier
+        run: uv tool install copier
+
+      - id: render-baseline
+        name: Render baseline template (current version)
+        env:
+          CURRENT_COMMIT: ${{ steps.get-current-version.outputs.current_commit }}
+        run: |
+          cd template-repo
+          copier update --skip-answered --defaults --conflict rej \
+            --vcs-ref "$CURRENT_COMMIT" \
+            --trust
+          cd ..
+          # Capture the rendered state as the baseline
+          cp -r template-repo template-baseline
+
+      - id: render-proposed
+        name: Render proposed template (PR changes)
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          cd template-repo
+          # Reset to clean state before applying proposed changes
+          git checkout -- .
+          git clean -fd
+          # Update using the PR branch of the skeleton
+          copier update --skip-answered --defaults --conflict rej \
+            --vcs-ref "$PR_HEAD_SHA" \
+            --trust
+          cd ..
+
+      - id: generate-diff
+        name: Generate diff between baseline and proposed
+        run: |
+          DIFF_OUTPUT=$(diff -ru \
+            template-baseline template-repo \
+            --exclude='.git' --exclude='.copier-answers.yml' || true)
+
+          if [ -z "$DIFF_OUTPUT" ]; then
+            echo "no_changes=true" >> "$GITHUB_OUTPUT"
+            echo "No changes detected."
+          else
+            echo "no_changes=false" >> "$GITHUB_OUTPUT"
+            # Write diff to file for processing
+            echo "$DIFF_OUTPUT" > /tmp/raw_diff.patch
+          fi
+
+      - id: full-diff-and-comment
+        name: Render full diff and format PR comment
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          CURRENT_VERSION: ${{ steps.get-current-version.outputs.current_commit }}
+          NO_CHANGES: ${{ steps.generate-diff.outputs.no_changes }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{
+            github.run_id }}
+        run: |
+          SHORT_SHA="${PR_HEAD_SHA:0:8}"
+          MAX_DIFF_LINES=100
+
+          # flush_file writes the accumulated diff for a single file to the comment.
+          flush_file() {
+            local file="$1"
+            local diff_content="$2"
+
+            [ -z "$file" ] && return
+
+            # Print full diff to workflow logs regardless of length
+            echo "--- Full diff for ${file} ---"
+            echo "$diff_content"
+            echo "--- End diff for ${file} ---"
+
+            local line_count
+            line_count=$(echo "$diff_content" | wc -l)
+            local truncated=false
+
+            if [ "$line_count" -gt "$MAX_DIFF_LINES" ]; then
+              diff_content=$(echo "$diff_content" | head -n "$MAX_DIFF_LINES")
+              truncated=true
+            fi
+
+            # For Markdown files, escape any backtick sequences of 3+ to prevent
+            # breaking out of the fenced code block.
+            if [[ "$file" == *.md ]]; then
+              diff_content=$(echo "$diff_content" | sed 's/```/` ` `/g')
+            fi
+
+            {
+              echo "#### \`${file}\`"
+              if [ "$line_count" -lt 20 ]; then
+                echo "<details open>"
+              else
+                echo "<details>"
+              fi
+              echo "<summary>Show diff</summary>"
+              echo ""
+              echo '````diff'
+              echo "$diff_content"
+              echo '````'
+              echo "</details>"
+              if [ "$truncated" = true ]; then
+                echo ""
+                echo "_This file contains many changes (showing first ${MAX_DIFF_LINES} of ${line_count} lines). [View full diff in workflow logs](${RUN_URL})._"
+              fi
+              echo ""
+            } >> /tmp/comment.md
+          }
+
+          {
+            echo "<!-- copier-template-diff -->"
+            echo "## Template Diff Preview"
+            echo ""
+            echo "Comparing \`launch-terraform-template\` (template version \`${CURRENT_VERSION}\`) against \`${SHORT_SHA}\`:"
+            echo ""
+          } > /tmp/comment.md
+
+          if [ "$NO_CHANGES" = "true" ]; then
+            echo "> **No changes detected.** The modifications in this PR do not result in any changes to the downstream template output." >> /tmp/comment.md
+          else
+            # Separate "Only in" lines (added/removed files) from the unified diff
+            added_files=""
+            removed_files=""
+            while IFS= read -r line; do
+              if [[ "$line" == "Only in template-repo"* ]]; then
+                # File was added (exists only in proposed)
+                # Format: "Only in template-repo/dir: filename" or "Only in template-repo: filename"
+                path=$(echo "$line" | sed 's|^Only in template-repo\(/\{0,1\}\)\([^:]*\): \(.*\)|\2/\3|; s|^/||')
+                added_files="${added_files}${path}\n"
+              elif [[ "$line" == "Only in template-baseline"* ]]; then
+                # File was removed (exists only in baseline)
+                path=$(echo "$line" | sed 's|^Only in template-baseline\(/\{0,1\}\)\([^:]*\): \(.*\)|\2/\3|; s|^/||')
+                removed_files="${removed_files}${path}\n"
+              fi
+            done < /tmp/raw_diff.patch
+
+            # Render added/removed file lists at the top
+            if [ -n "$added_files" ]; then
+              {
+                echo "#### Files added"
+                echo ""
+                echo -e "$added_files" | sed '/^$/d' | while IFS= read -r f; do echo "- \`${f}\`"; done
+                echo ""
+              } >> /tmp/comment.md
+            fi
+            if [ -n "$removed_files" ]; then
+              {
+                echo "#### Files removed"
+                echo ""
+                echo -e "$removed_files" | sed '/^$/d' | while IFS= read -r f; do echo "- \`${f}\`"; done
+                echo ""
+              } >> /tmp/comment.md
+            fi
+
+            # Parse the unified diff portions (skip "Only in" lines)
+            current_file=""
+            current_diff=""
+
+            while IFS= read -r line; do
+              # Skip "Only in" lines entirely
+              if [[ "$line" == "Only in "* ]]; then
+                continue
+              fi
+
+              if [[ "$line" == "diff -ru"* ]] || [[ "$line" == "--- "* && "$current_file" == "" ]]; then
+                continue
+              fi
+
+              if [[ "$line" == "+++ "* ]]; then
+                # Flush previous file
+                flush_file "$current_file" "$current_diff"
+                # Extract filename, removing the directory prefix and timestamp
+                current_file=$(echo "$line" | sed 's|^+++ template-repo/||' | awk '{print $1}')
+                current_diff=""
+              elif [[ "$line" == "--- "* ]]; then
+                continue
+              else
+                if [ -n "$current_diff" ]; then
+                  current_diff="${current_diff}
+          ${line}"
+                else
+                  current_diff="$line"
+                fi
+              fi
+            done < /tmp/raw_diff.patch
+
+            # Flush the last file
+            flush_file "$current_file" "$current_diff"
+          fi
+
+          cat /tmp/comment.md
+
+      - id: find-comment
+        name: Find previous diff comment
+        uses: peter-evans/find-comment@b30e6a3c0ed37e7c023ccd3f1db5c6c0b0c23aad
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: github-actions[bot]
+          body-includes: "<!-- copier-template-diff -->"
+
+      - id: upsert-comment
+        name: Create or update diff comment
+        uses: peter-evans/create-or-update-comment@e8674b075228eee787fea43ef493e45ece1004c9
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          body-file: /tmp/comment.md
+          edit-mode: replace
