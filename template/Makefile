@@ -91,8 +91,8 @@ define check_terraform_fmt
 endef
 
 define clean_terraform_module
-	$(RM) $(1)/.terraform* $(1)/terraform.*;
-	$(RM) $(1)/provider.tf
+	$(RM) -fr $(1)/.terraform* $(1)/terraform.*;
+	$(RM) -f $(1)/provider.tf
 endef
 
 define init_terraform_module
