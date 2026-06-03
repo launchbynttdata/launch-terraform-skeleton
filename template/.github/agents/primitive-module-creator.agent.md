@@ -3,7 +3,7 @@ name: Terraform Primitive Module Creator
 description: Agent that creates a Terraform Primitive Module from a template repository to meet our standards.
 ---
 
-<!-- version: 1.9 -->
+<!-- version: 1.13 -->
 
 # AI Agent Guide for Terraform Primitive Modules
 
@@ -11,6 +11,10 @@ This document provides context and instructions for AI coding assistants working
 
 ## Changelog
 
+- **1.13** – Added AWS API Reference documentation step for AWS primitive modules: consult official service API reference (matched to provider version where possible), derive parameter constraints, implement Terraform validations and variable descriptions accordingly; skip step if no public API reference is found (do not retry indefinitely).
+- **1.12** – Added root README guidance: build `README.md` from `TEMPLATED_README.md` (replace title, Overview, add Usage; retain Module Development boilerplate including Automatic Updates); do not delete `TEMPLATED_README.md` until all sections are incorporated.
+- **1.11** – Added cross-field validation guidance for optional object variables: conditional field requirements, disable/off sentinel prohibitions, variable description requirements for pairing rules, Critical Requirements Checklist item, Pre-Submission self-check, anti-patterns, and creation workflow step.
+- **1.10** – Added mechanical self-checks for `assert.NotEmpty`/`require.NotEmpty` in tests and README/main.tf sync; added iterative-fix rule (update example README when main.tf changes); clarified dual README structure (hand-written Usage vs terraform-docs); added step 4b to creation workflow; corrected Terratest template examples that contradicted specific-value assertion requirements.
 - **1.9** – Removed Regula/OPA references (no longer in `.tool-versions`, pre-commit, or Makefile). Applied structural corrections: unified CI workflow (`pull-request-check-terraform.yml` auto-detects provider); removed outdated `init-clean`/`env` Makefile targets; removed `.lcafenv` (no longer supported); corrected `types.go` template comment wording; updated `nttdtest/poc-template` references to `launchbynttdata/launch-terraform-template`.
 - **1.8** – Added guidance from iterative module creation: Terraform reserved variable names (avoid `source`, `target`), resource naming module API (instance_env/instance_resource are numbers; cloud_resource_type must be alphanumeric), validation block null handling (use ternary), provider schema verification for outputs, example outputs must match test expectations, Regula/Conftest pre-check, go mod tidy for new SDK deps, common Regula rules (e.g., SQS+KMS). Added requirement to run full example validation flow (tflint, init, validate, plan, apply, destroy) before implementing tests. Added Terratest / Go code quality review (golangci-lint, go get -u ./..., go mod tidy, go build) before running tests. Added account-scoped unique resource guidance (KMS aliases must use random suffix to avoid parallel/sequential collision).
 - **1.7** – Strengthened frequently-violated requirements based on multi-model trial feedback: added Critical Requirements Checklist, added WRONG/RIGHT examples for test assertions and functional vs readonly tests, added explicit example README accuracy requirements with examples, strengthened security verification requirements, added Pre-Submission Validation Checklist, expanded Makefile skeleton cleanup, clarified output `id` description for resources where id equals another attribute.
@@ -61,6 +65,12 @@ You are most likely helping create or modify a **primitive module**.
 9. **Template remnants MUST be completely removed.** This includes: template comments in `tests/testimpl/types.go`, TODO placeholders in README.md, and all references to `launch-terraform-template` outside of `.github/agents/`. See [Template Cleanup Checklist](#template-cleanup-checklist).
 
 10. **Output `id` description must be accurate.** For resources where `id` equals another attribute (e.g., a queue's `id` is the same as its `url`, or a storage account's `id` is the full ARM resource path), use a clarifying description like `"The ID of the resource (same as the <other attribute>)."` — do not use the exact same description for both outputs.
+
+11. **Optional object variables MUST validate cross-field coherence, not just enum/range values.** For every optional `object({...})` variable, ask: "If I set only one field, is the config meaningful?" Validate required field pairs, conditional requirements, and contradictory combinations (e.g., a disable/off sentinel value combined with an active configuration field). See [Cross-Field Validation for Optional Objects](#cross-field-validation-for-optional-objects).
+
+12. **Root `README.md` MUST be built from `TEMPLATED_README.md`, not written from scratch.** Copy the template first, replace `Your Module Name` and `Overview` with module-specific content, add a `Usage` section, run `terraform-docs`, and retain all skeleton boilerplate sections (Module Development, Local Validation, Review & Merge Process, Automatic Updates). Do not delete `TEMPLATED_README.md` until every template section is present in `README.md`. See [Root README from TEMPLATED_README](#root-readme-from-templated_readme).
+
+13. **AWS modules MUST align variable validations with the AWS API Reference.** For AWS primitive modules, consult the official service API reference documentation (see [AWS API Reference Documentation](#aws-api-reference-documentation)). When the API defines valid ranges, enums, formats, or cross-field rules, implement matching Terraform `validation {}` blocks and document constraints in variable descriptions. If no suitable public API reference is found after a reasonable search, skip this step — do not keep searching or retrying.
 
 ## Cloud Providers Supported
 
@@ -257,7 +267,7 @@ variable "tags" {
 - Tags: always include, default to empty map `{}`
 - Complex objects: use `object()` with `optional()` fields
 - Multi-line descriptions: use heredoc `<<-EOT ... EOT`
-- **Validation blocks are REQUIRED** for all bounded numerical inputs (e.g., timeouts, sizes, retention periods). Always add `validation {}` blocks when the cloud provider API enforces value ranges. Example:
+- **Validation blocks are REQUIRED** for all bounded numerical inputs (e.g., timeouts, sizes, retention periods). Always add `validation {}` blocks when the cloud provider API enforces value ranges. For **AWS** modules, derive these constraints from the official AWS service API reference (see [AWS API Reference Documentation](#aws-api-reference-documentation)) — Terraform provider schemas are sometimes more permissive than the AWS API. Example:
   ```hcl
   # Azure example
   variable "backup_retention_days" {
@@ -290,6 +300,65 @@ variable "tags" {
   ```
 - **Validation blocks with optional (null) variables:** When validating optional variables that may be `null`, use a ternary to avoid evaluating expressions on null. Terraform may evaluate the full condition, so `var.x == null || length(var.x) ...` can fail with "argument must not be null". Use `var.x == null ? true : (length(var.x) ...)` instead.
 - **Optional object attribute access:** When validating nested attributes of optional objects (e.g., `var.obj.field`), use `try()` to safely access: `var.obj == null ? true : (try(var.obj.field, null) == null ? true : (...))`.
+- **Optional object descriptions must document cross-field rules.** When fields within an optional object have conditional requirements, state them in the description (e.g., "Required when `<other field>` is set" / "Must not be set when `<field>` is OFF"). Reviewers and module consumers should not have to infer pairing rules from validation blocks alone.
+
+### Cross-Field Validation for Optional Objects
+
+> **Frequently violated.** Models validate enum values inside optional objects but allow partial configurations that are ambiguous or meaningless at runtime.
+
+When a variable is an optional object with multiple optional attributes, add validation for:
+
+1. **Conditional requirements** — if field A is set, field B must also be set
+2. **Conditional prohibition** — if field A is a disable/off sentinel, field B must not be set
+3. **Format constraints** — when a field has a required format (e.g., ARN suffix), validate it
+
+**WRONG — enum-only validation:**
+```hcl
+validation {
+  condition = var.config == null ? true : (
+    try(var.config.level, null) == null ||
+    contains(["ALL", "ERROR", "OFF"], var.config.level)
+  )
+}
+# Allows: { level = null, destination = "arn:..." } — ambiguous
+```
+
+**RIGHT — enum + cross-field coherence:**
+```hcl
+# level required when destination is set
+validation {
+  condition = var.config == null ? true : (
+    try(var.config.destination, null) == null ||
+    try(var.config.level, null) != null
+  )
+  error_message = "level is required when destination is set."
+}
+
+# destination required when level is active (not OFF)
+validation {
+  condition = var.config == null ? true : (
+    try(var.config.level, null) == null ||
+    try(var.config.level, null) == "OFF" ||
+    try(var.config.destination, null) != null
+  )
+  error_message = "destination is required when level is not OFF."
+}
+
+# destination must not be set when level is OFF
+validation {
+  condition = var.config == null ? true : (
+    try(var.config.level, null) != "OFF" ||
+    try(var.config.destination, null) == null
+  )
+  error_message = "destination must not be set when level is OFF."
+}
+```
+
+**Pattern to apply for every optional object block:**
+- List each attribute's valid values (enum/range)
+- List which attributes must appear together
+- List which attributes are mutually exclusive or contradictory
+- Document those requirements in the variable `description`
 
 **Provider-specific common variables:**
 
@@ -519,6 +588,36 @@ variable "location" {
 
 ### AWS Patterns
 
+#### AWS API Reference Documentation
+
+> **Applies to AWS primitive modules only.** Use this step when implementing or reviewing `variables.tf` validations.
+
+When creating or modifying an AWS primitive module:
+
+1. **Find the official AWS API Reference** for the service operation(s) that back the Terraform resource. Common entry points:
+   - Service API Reference index (e.g., `https://docs.aws.amazon.com/step-functions/latest/apireference/`)
+   - EC2 API Reference (e.g., `https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html`)
+   - API Gateway API reference (e.g., `https://docs.aws.amazon.com/apigateway/latest/developerguide/api-ref.html`)
+2. **Match the provider version** in `versions.tf` where practical. Prefer documentation current for the AWS provider version pinned in the module; if version-specific docs are unavailable, use the latest public API reference for that service.
+3. **Extract constraints** from the API reference: valid enum values, numeric min/max, string length limits, required ARN formats, and cross-field rules (e.g., a field required only when another is set).
+4. **Implement validations** in `variables.tf` that match the API constraints. Document valid ranges and formats in variable descriptions. When the AWS API maximum differs from the Terraform provider schema (e.g., provider allows a wider range than the API accepts), **trust the AWS API reference** and fail early at plan time.
+5. **Stop if documentation is not found.** If no suitable public AWS API reference page exists after a reasonable search (service API Reference or Developer Guide API section for the relevant operation), skip this step and proceed with provider documentation. Do not retry indefinitely or block module completion.
+
+**AWS example — bounded numeric from API reference:**
+```hcl
+# AWS example: reuse period constrained by EncryptionConfiguration in Step Functions API
+validation {
+  condition = var.encryption_configuration == null ? true : (
+    try(var.encryption_configuration.kms_data_key_reuse_period_seconds, null) == null ||
+    (
+      var.encryption_configuration.kms_data_key_reuse_period_seconds >= 60 &&
+      var.encryption_configuration.kms_data_key_reuse_period_seconds <= 900
+    )
+  )
+  error_message = "kms_data_key_reuse_period_seconds must be between 60 and 900 seconds per AWS API."
+}
+```
+
 **Region Data Source:**
 ```hcl
 data "aws_region" "current" {}
@@ -706,6 +805,14 @@ After creating `examples/complete/` (including `main.tf`, `variables.tf`, `outpu
 
 > **This is frequently violated.** Models often write a simplified usage snippet that omits variables, or list outputs that don't exist in the actual `outputs.tf`. The example README must be a faithful mirror of the actual example code.
 
+> **Dual README structure:** `examples/complete/README.md` contains TWO code representations:
+> 1. A hand-written **Usage** snippet (must mirror `main.tf` exactly)
+> 2. A **terraform-docs** generated section (auto-synced via `pre-commit run terraform_docs --all-files`)
+>
+> Drift between these is a defect even if terraform-docs is correct. After finalizing `main.tf`, copy its body into the Usage block or regenerate it programmatically. The terraform-docs section listing a resource that the Usage snippet omits is a common sign of this drift.
+
+> **Iterative fix rule:** When fixing deploy/plan errors in `examples/complete/main.tf` (KMS policies, IAM roles, `depends_on`, etc.), update the hand-written Usage snippet in `examples/complete/README.md` in the **same change**. Models often fix `main.tf` during apply/plan iteration but leave the README snippet stale.
+
 **Requirements:**
 1. The **usage snippet** in the README must contain the EXACT same module calls and variables as `examples/complete/main.tf`. If `main.tf` passes 12 variables to the module, the README snippet must show all 12.
 2. The **Inputs table** must list EVERY variable from `examples/complete/variables.tf` with matching names, types, defaults, and descriptions.
@@ -713,6 +820,58 @@ After creating `examples/complete/` (including `main.tf`, `variables.tf`, `outpu
 4. **Example outputs must match test expectations:** Every output consumed by `terraform.Output(t, ..., "name")` in `tests/testimpl/test_impl.go` MUST exist in `examples/complete/outputs.tf`. If a test expects `desired_state`, the example must expose it. Add any missing outputs before tests run.
 5. Do NOT manually edit content within `<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` markers. Let terraform-docs generate it, or write content that exactly matches what terraform-docs would produce.
 6. Do NOT write "See variables.tf for inputs" instead of providing an actual Inputs table.
+
+### Root README from TEMPLATED_README
+
+> **Frequently violated.** Models write a custom root `README.md` from scratch and drop standard skeleton sections such as Module Development, Local Validation, Review & Merge Process, and Automatic Updates.
+
+When creating the root `README.md` for a new primitive module:
+
+1. **Copy `TEMPLATED_README.md` to `README.md`** as the starting point — do not write README from scratch
+2. **Replace only the module-specific sections:**
+   - `# Your Module Name` → the module's display title (e.g., `# Terraform AWS Module: S3 Bucket (Primitive)`)
+   - `## Overview` → description of what the module wraps and its capabilities
+   - Add a `## Usage` section with a module-specific HCL example (after Overview, before the terraform-docs hook)
+3. **Retain all skeleton boilerplate sections unchanged:**
+   - `## Module Development`
+   - `### Pre-Requisites`
+   - `### Pre-Commit hooks`
+   - `### Local Validation`
+   - `### Review & Merge Process`
+   - `### Automatic Updates`
+4. **Run `pre-commit run terraform_docs --all-files`** to populate the docs hook section
+5. **Delete `TEMPLATED_README.md` only after verifying** all template sections above are present in `README.md`
+
+**WRONG — custom README missing skeleton sections:**
+```markdown
+# Terraform AWS Module: Example (Primitive)
+## Overview
+...
+## Pre-Commit Hooks        ← abbreviated, not the template structure
+...
+## Usage
+...
+## Testing                  ← ad-hoc section replacing Local Validation
+```
+
+**RIGHT — template structure with module-specific front matter:**
+```markdown
+# Terraform AWS Module: Example (Primitive)
+## Overview
+(module-specific description)
+## Usage
+(module-specific HCL)
+<!-- terraform-docs hook -->
+## Module Development
+### Pre-Requisites
+...
+### Local Validation
+...
+### Review & Merge Process
+...
+### Automatic Updates
+...
+```
 
 ### Terratest (tests/)
 
@@ -745,15 +904,10 @@ func TestResourceComplete(t *testing.T) {
     defer terraform.Destroy(t, terraformOptions)
     terraform.InitAndApply(t, terraformOptions)
 
-    // Verify Terraform outputs
+    // Verify Terraform outputs match expected values from the deployment
     id := terraform.Output(t, terraformOptions, "id")
-    assert.NotEmpty(t, id)
-
     name := terraform.Output(t, terraformOptions, "name")
-    assert.NotEmpty(t, name)
-
     resourceGroupName := terraform.Output(t, terraformOptions, "resource_group_name")
-    assert.NotEmpty(t, resourceGroupName)
 
     // Verify via Azure API - confirm the resource actually exists and is configured correctly
     // Use terratest azure helpers where available:
@@ -764,6 +918,7 @@ func TestResourceComplete(t *testing.T) {
     // Example for a storage account:
     storageAccount := azure.GetStorageAccount(t, resourceGroupName, name, subscriptionID)
     require.NotNil(t, storageAccount)
+    assert.Equal(t, id, *storageAccount.ID, "id output should match storage account resource ID")
     assert.Equal(t, "Standard_LRS", string(storageAccount.SKU.Name))
     assert.Equal(t, "eastus", *storageAccount.Location)
 
@@ -805,12 +960,10 @@ func TestResourceComplete(t *testing.T) {
     defer terraform.Destroy(t, terraformOptions)
     terraform.InitAndApply(t, terraformOptions)
 
-    // Verify Terraform outputs
+    // Verify Terraform outputs match expected values from the deployment
     bucketName := terraform.Output(t, terraformOptions, "name")
-    assert.NotEmpty(t, bucketName)
-
     arn := terraform.Output(t, terraformOptions, "arn")
-    assert.NotEmpty(t, arn)
+    assert.Equal(t, bucketName, arn[len("arn:aws:s3:::"):], "name output should match bucket name in ARN")
 
     // Verify via AWS API - confirm the resource actually exists and is configured correctly
     // Use terratest aws helpers where available:
@@ -858,9 +1011,8 @@ func TestResourceComplete(t *testing.T) {
     defer terraform.Destroy(t, terraformOptions)
     terraform.InitAndApply(t, terraformOptions)
 
-    // Verify Terraform outputs
+    // Verify Terraform outputs match expected values from the deployment
     bucketName := terraform.Output(t, terraformOptions, "name")
-    assert.NotEmpty(t, bucketName)
 
     // Verify via GCP API - confirm the resource actually exists and is configured correctly
     // Use terratest gcp helpers where available:
@@ -1060,10 +1212,16 @@ docs: ## Generate documentation
 - Prefix output names with the resource type (use `id` not `<resource>_id`)
 - Pass mutually exclusive parameters unconditionally (use conditionals or validation)
 - Skip input validation blocks for bounded numerical parameters
+- Rely on Terraform provider schema alone for AWS modules without checking the AWS API reference for stricter constraints
+- Retry indefinitely when AWS API reference documentation cannot be found
 - Use `assert.NotEmpty` for configuration values that have known expected values (use `assert.Equal` instead)
 - Use `if ok { assert... }` for security attribute checks (use `require.True(t, ok, ...)` instead)
 - Write a simplified usage snippet in the example README that omits variables from the actual `main.tf`
 - Give two outputs identical descriptions when they share the same underlying value
+- Validate only enum/range values inside optional objects without checking cross-field coherence
+- Allow partial optional-object configs where one field implies another must be set
+- Write root `README.md` from scratch instead of starting from `TEMPLATED_README.md`
+- Delete `TEMPLATED_README.md` before all template sections are incorporated into `README.md`
 
 **Do:**
 - Wrap one resource type per primitive
@@ -1084,6 +1242,10 @@ docs: ## Generate documentation
 - Include write operations in the functional test (and exclude them from the readonly test)
 - Verify the example README snippet matches the actual `main.tf` line-for-line before finalizing
 - Walk through the Pre-Submission Validation Checklist before considering the module complete
+- Add cross-field validation for every optional object with interdependent attributes
+- Document conditional field requirements in optional object variable descriptions
+- Build root `README.md` from `TEMPLATED_README.md`, retaining Module Development boilerplate
+- For AWS modules, consult the AWS service API reference and align validations with documented parameter constraints
 
 ## Creating a New Primitive Module
 
@@ -1092,7 +1254,8 @@ When asked to create a new primitive module, follow this process:
 1. **Identify provider and resource**
    - Which cloud provider? (Azure, AWS, GCP)
    - Which specific resource type?
-   - Review provider documentation
+   - Review Terraform provider documentation for the resource
+   - **AWS only:** Consult the official AWS service API reference and note parameter constraints (see [AWS API Reference Documentation](#aws-api-reference-documentation)). Skip if no public API reference is found.
 
 2. **Find similar primitives**
    - Look at existing primitives for the same provider
@@ -1101,7 +1264,7 @@ When asked to create a new primitive module, follow this process:
 
 3. **Implement core files**
    - `versions.tf` - Set Terraform and provider versions
-   - `variables.tf` - All resource arguments as variables
+   - `variables.tf` - All resource arguments as variables; for each optional `object({...})` variable, define cross-field validation rules (see [Cross-Field Validation for Optional Objects](#cross-field-validation-for-optional-objects))
    - `main.tf` - Single resource with dynamic blocks
    - `outputs.tf` - Key resource attributes
 
@@ -1114,6 +1277,11 @@ When asked to create a new primitive module, follow this process:
 4a. **Run full example validation flow before implementing tests**
    - Run tflint, init, validate, plan, apply, destroy for `examples/complete/` (see [Full Example Validation Flow](#full-example-validation-flow-before-implementing-tests))
    - Fix any failures before proceeding to Terratest
+
+4b. **Sync example README Usage snippet**
+   - Copy the body of `examples/complete/main.tf` into the hand-written Usage block in `examples/complete/README.md`
+   - If `main.tf` changes at any later point (including during apply/plan fixes), update the README Usage block in the same change
+   - See [Example README Accuracy](#example-readme-accuracy)
 
 5. **Write Terratest**
    - `tests/<resource>_test.go`
@@ -1138,9 +1306,9 @@ When asked to create a new primitive module, follow this process:
 ```bash
    terraform-docs markdown table --output-file README.md --output-mode inject .
 ```
-   This populates the `<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` section with auto-generated inputs/outputs tables. **Do NOT leave this section empty.** If `terraform-docs` is not available, manually populate the section with an inputs table and outputs table matching the module's `variables.tf` and `outputs.tf`.
+   Before running terraform-docs, ensure `README.md` was built from `TEMPLATED_README.md` with module-specific title, Overview, and Usage (see [Root README from TEMPLATED_README](#root-readme-from-templated_readme)). This populates the terraform-docs hook section with auto-generated inputs/outputs tables. **Do NOT leave this section empty.** If `terraform-docs` is not available, manually populate the section with an inputs table and outputs table matching the module's `variables.tf` and `outputs.tf`.
 
-9. **Clean up template references.** Carefully check through ALL files and remove references to the template. See the Template Cleanup Checklist below for a complete list of items to check.
+9. **Clean up template references.** Carefully check through ALL files and remove references to the template. See the Template Cleanup Checklist below for a complete list of items to check. **Do not delete `TEMPLATED_README.md` until root `README.md` contains all template sections.**
 
 
 ## Template Cleanup Checklist
@@ -1148,13 +1316,13 @@ When asked to create a new primitive module, follow this process:
 When transforming the template into a new primitive module, complete ALL of these steps:
 
 ### Files to Remove or Transform
-- [ ] **TEMPLATED_README.md** → Delete after incorporating relevant content into README.md
+- [ ] **TEMPLATED_README.md** → Delete **only after** all sections are incorporated into `README.md` (Module Development, Local Validation, Review & Merge Process, Automatic Updates). See [Root README from TEMPLATED_README](#root-readme-from-templated_readme).
 - [ ] **`examples/with_cake/`** → Delete template example directory
 
 ### Files to Update
 - [ ] **`go.mod`** → Update the `launch-terraform-template` portion of the `github.com/launchbynttdata/launch-terraform-template` module path to your module name (e.g. `github.com/launchbynttdata/tf-aws-module_primitive-s3_bucket`)
 - [ ] **Test imports** → Update all Go import paths to match new `go.mod` module path
-- [ ] **README.md** → Update provider-specific references (authentication environment variables, provider name) to match the target provider
+- [ ] **README.md** → Built from `TEMPLATED_README.md`: replace title and Overview, add Usage, retain Module Development boilerplate; update provider-specific references (authentication environment variables, provider name) to match the target provider
 
 ### Placeholders and TODOs to Remove
 - [ ] **README.md TODO placeholders** → Search for `TODO:` in ALL `.md` files (root README.md AND `examples/complete/README.md`) and either replace with actual content or remove the TODO text. The most commonly missed placeholder is `TODO: INSERT DOC LINK ABOUT HOOKS` in the detect-secrets-hook section of the root README.md. **This is missed in ~40% of trials — search explicitly.**
@@ -1168,6 +1336,14 @@ When transforming the template into a new primitive module, complete ALL of thes
 
 Before considering the module complete, walk through EVERY item below. Each item corresponds to a defect found in prior AI-generated modules.
 
+### Automated Self-Checks
+
+Run these commands from the repository root before marking the module complete:
+
+- [ ] **Review `NotEmpty` assertions in tests:** `grep -rn 'assert\.NotEmpty\|require\.NotEmpty' tests/testimpl/` — every match must be reviewed. Configuration and API-returned values MUST use `assert.Equal` with specific expected values (from Terraform outputs or known constants). The only acceptable uses of `NotEmpty` are: verifying a slice has elements before indexing into it, or checking that required environment variables are set before proceeding.
+- [ ] **Verify example README Usage matches main.tf:** After any edit to `examples/complete/main.tf`, confirm the hand-written Usage block in `examples/complete/README.md` contains the same resources, policies, and `depends_on` entries. A terraform-docs section that lists resources missing from the Usage snippet indicates drift.
+- [ ] **Review optional object variables:** For each `object({...})` variable in `variables.tf`, confirm validation covers conditional requirements and contradictory combinations — not only per-field enum/range checks.
+
 ### Tests
 - [ ] Has the Terratest / Go code quality review (golangci-lint, go get -u ./..., go mod tidy, go build) been run successfully before running tests?
 - [ ] Do ALL test assertions use `assert.Equal` with specific expected values (not `assert.NotEmpty`)?
@@ -1179,16 +1355,23 @@ Before considering the module complete, walk through EVERY item below. Each item
 - [ ] Does the test compare API-returned values against Terraform outputs or known expected values?
 
 ### README and Documentation
-- [ ] Is the `<!-- BEGINNING OF PRE-COMMIT-TERRAFORM DOCS HOOK -->` section populated (not empty)?
+- [ ] Was root `README.md` built from `TEMPLATED_README.md` (not written from scratch)?
+- [ ] Does root `README.md` retain all skeleton sections: Module Development, Pre-Requisites, Pre-Commit hooks, Local Validation, Review & Merge Process, Automatic Updates?
+- [ ] Is the terraform-docs section populated (not empty)?
 - [ ] Have ALL `TODO:` placeholders been removed or replaced in ALL `.md` files?
 - [ ] Does the `examples/complete/README.md` usage snippet exactly match `examples/complete/main.tf`?
+- [ ] If `main.tf` was changed during apply/plan iteration, was the README Usage snippet updated in the same change?
 - [ ] Does the Inputs table in the example README list ALL variables from `examples/complete/variables.tf`?
 - [ ] Does the Outputs table in the example README list ALL (and ONLY) outputs from `examples/complete/outputs.tf`?
 
 ### Variables and Outputs
 - [ ] Does every bounded numerical variable have a `validation {}` block?
+- [ ] **AWS modules only:** Were variable validations checked against the official AWS service API reference? Do validation ranges match API constraints (not just the Terraform provider schema)? If no public API reference was available, was that step skipped rather than retried indefinitely?
 - [ ] Are mutually exclusive parameters handled with conditionals in `main.tf` or validation blocks?
 - [ ] Do validation blocks for optional (null-able) variables use ternary to avoid null evaluation? (e.g., `var.x == null ? true : (length(var.x) ...)`)
+- [ ] For each optional `object({...})` variable, are cross-field rules validated (not just enum/range checks on individual attributes)?
+- [ ] For each optional object, were conditional requirements tested against partial configs (field A set, field B null; disable sentinel + active field)?
+- [ ] Do variable descriptions document cross-field requirements where validation enforces them?
 - [ ] Do all outputs reference attributes that exist in the provider schema? (Verify in provider docs — e.g., `current_state` may not exist on all resources.)
 - [ ] Do all outputs have short `description` fields?
 - [ ] Are output names generic (e.g., `id`, `arn`, `name`) without resource-type prefixes?
@@ -1202,7 +1385,7 @@ Before considering the module complete, walk through EVERY item below. Each item
 - [ ] Does the example use the most secure configuration (e.g., customer-managed encryption keys, not provider-managed defaults)? (Verify via review and any engagement-level policy scanner; `make check` covers lint and tests but not policy compliance.)
 
 ### Template Cleanup
-- [ ] Is `TEMPLATED_README.md` deleted?
+- [ ] Is `TEMPLATED_README.md` deleted (only after all sections are in `README.md`)?
 - [ ] Is `examples/with_cake/` deleted?
 - [ ] Are there zero references to `launch-terraform-template` outside `.github/agents/`?
 - [ ] Is the `go.mod` module path updated?
