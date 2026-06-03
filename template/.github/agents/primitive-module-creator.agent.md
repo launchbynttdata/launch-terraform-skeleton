@@ -3,7 +3,7 @@ name: Terraform Primitive Module Creator
 description: Agent that creates a Terraform Primitive Module from a template repository to meet our standards.
 ---
 
-<!-- version: 1.12 -->
+<!-- version: 1.13 -->
 
 # AI Agent Guide for Terraform Primitive Modules
 
@@ -11,6 +11,7 @@ This document provides context and instructions for AI coding assistants working
 
 ## Changelog
 
+- **1.13** – Added AWS API Reference documentation step for AWS primitive modules: consult official service API reference (matched to provider version where possible), derive parameter constraints, implement Terraform validations and variable descriptions accordingly; skip step if no public API reference is found (do not retry indefinitely).
 - **1.12** – Added root README guidance: build `README.md` from `TEMPLATED_README.md` (replace title, Overview, add Usage; retain Module Development boilerplate including Automatic Updates); do not delete `TEMPLATED_README.md` until all sections are incorporated.
 - **1.11** – Added cross-field validation guidance for optional object variables: conditional field requirements, disable/off sentinel prohibitions, variable description requirements for pairing rules, Critical Requirements Checklist item, Pre-Submission self-check, anti-patterns, and creation workflow step.
 - **1.10** – Added mechanical self-checks for `assert.NotEmpty`/`require.NotEmpty` in tests and README/main.tf sync; added iterative-fix rule (update example README when main.tf changes); clarified dual README structure (hand-written Usage vs terraform-docs); added step 4b to creation workflow; corrected Terratest template examples that contradicted specific-value assertion requirements.
@@ -68,6 +69,8 @@ You are most likely helping create or modify a **primitive module**.
 11. **Optional object variables MUST validate cross-field coherence, not just enum/range values.** For every optional `object({...})` variable, ask: "If I set only one field, is the config meaningful?" Validate required field pairs, conditional requirements, and contradictory combinations (e.g., a disable/off sentinel value combined with an active configuration field). See [Cross-Field Validation for Optional Objects](#cross-field-validation-for-optional-objects).
 
 12. **Root `README.md` MUST be built from `TEMPLATED_README.md`, not written from scratch.** Copy the template first, replace `Your Module Name` and `Overview` with module-specific content, add a `Usage` section, run `terraform-docs`, and retain all skeleton boilerplate sections (Module Development, Local Validation, Review & Merge Process, Automatic Updates). Do not delete `TEMPLATED_README.md` until every template section is present in `README.md`. See [Root README from TEMPLATED_README](#root-readme-from-templated_readme).
+
+13. **AWS modules MUST align variable validations with the AWS API Reference.** For AWS primitive modules, consult the official service API reference documentation (see [AWS API Reference Documentation](#aws-api-reference-documentation)). When the API defines valid ranges, enums, formats, or cross-field rules, implement matching Terraform `validation {}` blocks and document constraints in variable descriptions. If no suitable public API reference is found after a reasonable search, skip this step — do not keep searching or retrying.
 
 ## Cloud Providers Supported
 
@@ -264,7 +267,7 @@ variable "tags" {
 - Tags: always include, default to empty map `{}`
 - Complex objects: use `object()` with `optional()` fields
 - Multi-line descriptions: use heredoc `<<-EOT ... EOT`
-- **Validation blocks are REQUIRED** for all bounded numerical inputs (e.g., timeouts, sizes, retention periods). Always add `validation {}` blocks when the cloud provider API enforces value ranges. Example:
+- **Validation blocks are REQUIRED** for all bounded numerical inputs (e.g., timeouts, sizes, retention periods). Always add `validation {}` blocks when the cloud provider API enforces value ranges. For **AWS** modules, derive these constraints from the official AWS service API reference (see [AWS API Reference Documentation](#aws-api-reference-documentation)) — Terraform provider schemas are sometimes more permissive than the AWS API. Example:
   ```hcl
   # Azure example
   variable "backup_retention_days" {
@@ -584,6 +587,36 @@ variable "location" {
 - Delegated subnets for managed services
 
 ### AWS Patterns
+
+#### AWS API Reference Documentation
+
+> **Applies to AWS primitive modules only.** Use this step when implementing or reviewing `variables.tf` validations.
+
+When creating or modifying an AWS primitive module:
+
+1. **Find the official AWS API Reference** for the service operation(s) that back the Terraform resource. Common entry points:
+   - Service API Reference index (e.g., `https://docs.aws.amazon.com/step-functions/latest/apireference/`)
+   - EC2 API Reference (e.g., `https://docs.aws.amazon.com/AWSEC2/latest/APIReference/Welcome.html`)
+   - API Gateway API reference (e.g., `https://docs.aws.amazon.com/apigateway/latest/developerguide/api-ref.html`)
+2. **Match the provider version** in `versions.tf` where practical. Prefer documentation current for the AWS provider version pinned in the module; if version-specific docs are unavailable, use the latest public API reference for that service.
+3. **Extract constraints** from the API reference: valid enum values, numeric min/max, string length limits, required ARN formats, and cross-field rules (e.g., a field required only when another is set).
+4. **Implement validations** in `variables.tf` that match the API constraints. Document valid ranges and formats in variable descriptions. When the AWS API maximum differs from the Terraform provider schema (e.g., provider allows a wider range than the API accepts), **trust the AWS API reference** and fail early at plan time.
+5. **Stop if documentation is not found.** If no suitable public AWS API reference page exists after a reasonable search (service API Reference or Developer Guide API section for the relevant operation), skip this step and proceed with provider documentation. Do not retry indefinitely or block module completion.
+
+**AWS example — bounded numeric from API reference:**
+```hcl
+# AWS example: reuse period constrained by EncryptionConfiguration in Step Functions API
+validation {
+  condition = var.encryption_configuration == null ? true : (
+    try(var.encryption_configuration.kms_data_key_reuse_period_seconds, null) == null ||
+    (
+      var.encryption_configuration.kms_data_key_reuse_period_seconds >= 60 &&
+      var.encryption_configuration.kms_data_key_reuse_period_seconds <= 900
+    )
+  )
+  error_message = "kms_data_key_reuse_period_seconds must be between 60 and 900 seconds per AWS API."
+}
+```
 
 **Region Data Source:**
 ```hcl
@@ -1178,6 +1211,8 @@ docs: ## Generate documentation
 - Prefix output names with the resource type (use `id` not `<resource>_id`)
 - Pass mutually exclusive parameters unconditionally (use conditionals or validation)
 - Skip input validation blocks for bounded numerical parameters
+- Rely on Terraform provider schema alone for AWS modules without checking the AWS API reference for stricter constraints
+- Retry indefinitely when AWS API reference documentation cannot be found
 - Use `assert.NotEmpty` for configuration values that have known expected values (use `assert.Equal` instead)
 - Use `if ok { assert... }` for security attribute checks (use `require.True(t, ok, ...)` instead)
 - Write a simplified usage snippet in the example README that omits variables from the actual `main.tf`
@@ -1209,6 +1244,7 @@ docs: ## Generate documentation
 - Add cross-field validation for every optional object with interdependent attributes
 - Document conditional field requirements in optional object variable descriptions
 - Build root `README.md` from `TEMPLATED_README.md`, retaining Module Development boilerplate
+- For AWS modules, consult the AWS service API reference and align validations with documented parameter constraints
 
 ## Creating a New Primitive Module
 
@@ -1217,7 +1253,8 @@ When asked to create a new primitive module, follow this process:
 1. **Identify provider and resource**
    - Which cloud provider? (Azure, AWS, GCP)
    - Which specific resource type?
-   - Review provider documentation
+   - Review Terraform provider documentation for the resource
+   - **AWS only:** Consult the official AWS service API reference and note parameter constraints (see [AWS API Reference Documentation](#aws-api-reference-documentation)). Skip if no public API reference is found.
 
 2. **Find similar primitives**
    - Look at existing primitives for the same provider
@@ -1328,6 +1365,7 @@ Run these commands from the repository root before marking the module complete:
 
 ### Variables and Outputs
 - [ ] Does every bounded numerical variable have a `validation {}` block?
+- [ ] **AWS modules only:** Were variable validations checked against the official AWS service API reference? Do validation ranges match API constraints (not just the Terraform provider schema)? If no public API reference was available, was that step skipped rather than retried indefinitely?
 - [ ] Are mutually exclusive parameters handled with conditionals in `main.tf` or validation blocks?
 - [ ] Do validation blocks for optional (null-able) variables use ternary to avoid null evaluation? (e.g., `var.x == null ? true : (length(var.x) ...)`)
 - [ ] For each optional `object({...})` variable, are cross-field rules validated (not just enum/range checks on individual attributes)?
