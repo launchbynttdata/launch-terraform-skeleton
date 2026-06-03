@@ -807,7 +807,7 @@ After creating `examples/complete/` (including `main.tf`, `variables.tf`, `outpu
 
 > **Dual README structure:** `examples/complete/README.md` contains TWO code representations:
 > 1. A hand-written **Usage** snippet (must mirror `main.tf` exactly)
-> 2. A **terraform-docs** generated section (auto-synced via `make docs` or `terraform-docs`)
+> 2. A **terraform-docs** generated section (auto-synced via `pre-commit run terraform_docs --all-files`)
 >
 > Drift between these is a defect even if terraform-docs is correct. After finalizing `main.tf`, copy its body into the Usage block or regenerate it programmatically. The terraform-docs section listing a resource that the Usage snippet omits is a common sign of this drift.
 
@@ -839,7 +839,7 @@ When creating the root `README.md` for a new primitive module:
    - `### Local Validation`
    - `### Review & Merge Process`
    - `### Automatic Updates`
-4. **Run `terraform-docs`** (or `make docs`) to populate the docs hook section
+4. **Run `pre-commit run terraform_docs --all-files`** to populate the docs hook section
 5. **Delete `TEMPLATED_README.md` only after verifying** all template sections above are present in `README.md`
 
 **WRONG — custom README missing skeleton sections:**
@@ -918,6 +918,7 @@ func TestResourceComplete(t *testing.T) {
     // Example for a storage account:
     storageAccount := azure.GetStorageAccount(t, resourceGroupName, name, subscriptionID)
     require.NotNil(t, storageAccount)
+    assert.Equal(t, id, *storageAccount.ID, "id output should match storage account resource ID")
     assert.Equal(t, "Standard_LRS", string(storageAccount.SKU.Name))
     assert.Equal(t, "eastus", *storageAccount.Location)
 
