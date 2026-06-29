@@ -15,57 +15,69 @@
 #      demandAllTests2RunAreComposableOnes calls t.FailNow() in that case, so
 #      the readonly suite hard-fails the moment it runs.
 #
-# This hook catches both statically, at commit time. See
+# This hook catches both statically, at commit time. To stay robust to source
+# formatting it strips // line comments and flattens newlines before matching,
+# so multiline calls and identifiers mentioned in comments are handled. See
 # launchbynttdata/launch-workflows#92.
 
 set -euo pipefail
 
-READONLY_DIR="tests/post_deploy_functional_readonly"
-
-# Nothing to validate if the module has no readonly suite.
-if [ ! -d "$READONLY_DIR" ]; then
-  exit 0
-fi
-
-# No Go files in the readonly suite -> nothing to validate.
-if ! find "$READONLY_DIR" -name '*.go' -type f | grep -q .; then
-  exit 0
-fi
+# Mirror the Makefile's parameterization so directory overrides stay in sync.
+GO_TEST_DIRECTORIES="${GO_TEST_DIRECTORIES:-tests}"
+GO_TEST_READONLY_DIRECTORY="${GO_TEST_READONLY_DIRECTORY:-post_deploy_functional_readonly}"
 
 status=0
 
-# 1. Wrong runner: the destructive runner must not appear in the readonly suite.
-if grep -RnE --include='*.go' 'RunSetupTestTeardown' "$READONLY_DIR" >/dev/null 2>&1; then
-  echo "ERROR: $READONLY_DIR uses lib.RunSetupTestTeardown." >&2
-  echo "       The readonly suite must use lib.RunNonDestructiveTest -- it must not apply/destroy." >&2
-  grep -RnE --include='*.go' 'RunSetupTestTeardown' "$READONLY_DIR" >&2 || true
-  status=1
-fi
+for base in $GO_TEST_DIRECTORIES; do
+  readonly_dir="$base/$GO_TEST_READONLY_DIRECTORY"
+  [ -d "$readonly_dir" ] || continue
 
-# The readonly suite must call the non-destructive runner.
-if ! grep -RnE --include='*.go' 'RunNonDestructiveTest' "$READONLY_DIR" >/dev/null 2>&1; then
-  echo "ERROR: $READONLY_DIR does not call lib.RunNonDestructiveTest." >&2
-  echo "       The readonly suite must drive its assertions through that runner." >&2
-  status=1
-fi
+  go_files="$(find "$readonly_dir" -name '*.go' -type f 2>/dev/null || true)"
+  [ -n "$go_files" ] || continue
 
-# 2. Wrong name: every function passed to RunNonDestructiveTest must start with
-#    TestComposable (the lcaf runtime requirement that CI cannot see).
-names="$(grep -RhoE --include='*.go' 'RunNonDestructiveTest\([^)]*\)' "$READONLY_DIR" \
-          | sed -E 's/.*,[[:space:]]*([A-Za-z0-9_]+\.)?([A-Za-z0-9_]+)[[:space:]]*\)/\2/' || true)"
-while IFS= read -r fn; do
-  [ -n "$fn" ] || continue
-  case "$fn" in
-    TestComposable*) : ;;
-    *)
-      echo "ERROR: function '$fn' is passed to RunNonDestructiveTest but does not start with 'TestComposable'." >&2
-      echo "       lcaf-component-terratest requires a TestComposable* function; CI does not catch this." >&2
-      status=1
-      ;;
-  esac
-done <<EOF
+  # Comment-stripped, newline-flattened view of the readonly Go sources, so the
+  # checks below are robust to multiline calls and to identifiers appearing in
+  # comments. (Strips // line comments; block comments are not handled.)
+  flat="$(cat $go_files | sed -e 's://.*$::' | tr '\n' ' ')"
+
+  # 1. Wrong runner: the destructive runner must not be *called* in the readonly suite.
+  if printf '%s' "$flat" | grep -Eq 'RunSetupTestTeardown[[:space:]]*\('; then
+    echo "ERROR: $readonly_dir calls lib.RunSetupTestTeardown." >&2
+    echo "       The readonly suite must use lib.RunNonDestructiveTest -- it must not apply/destroy." >&2
+    status=1
+  fi
+
+  # The readonly suite must call the non-destructive runner.
+  if ! printf '%s' "$flat" | grep -Eq 'RunNonDestructiveTest[[:space:]]*\('; then
+    echo "ERROR: $readonly_dir does not call lib.RunNonDestructiveTest." >&2
+    echo "       The readonly suite must drive its assertions through that runner." >&2
+    status=1
+  fi
+
+  # 2. Wrong name: every function passed to RunNonDestructiveTest must start with
+  #    TestComposable (the lcaf runtime requirement that CI cannot see). The last
+  #    argument is the testimpl function; tolerate a gofmt trailing comma and an
+  #    optional package qualifier.
+  names="$(printf '%s' "$flat" \
+    | grep -oE 'RunNonDestructiveTest[[:space:]]*\([^)]*\)' \
+    | sed -E -e 's/^[^(]*\(//' -e 's/\)$//' -e 's/[[:space:]]//g' -e 's/,+$//' \
+    | awk -F',' '{print $NF}' \
+    | awk -F'.' '{print $NF}' || true)"
+
+  while IFS= read -r fn; do
+    [ -n "$fn" ] || continue
+    case "$fn" in
+      TestComposable*) : ;;
+      *)
+        echo "ERROR: function '$fn' is passed to RunNonDestructiveTest in $readonly_dir but does not start with 'TestComposable'." >&2
+        echo "       lcaf-component-terratest requires a TestComposable* function; CI does not catch this." >&2
+        status=1
+        ;;
+    esac
+  done <<EOF
 $names
 EOF
+done
 
 if [ "$status" -ne 0 ]; then
   echo "" >&2
