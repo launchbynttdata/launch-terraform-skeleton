@@ -62,6 +62,7 @@ TFLINT_CONFIG ?= .tflint.hcl
 VAR_FILE ?= test.tfvars
 AWS_PROFILE ?= default
 AWS_REGION ?= us-east-2
+GITHUB_OWNER ?= $(or $(GITHUB_REPOSITORY_OWNER),launchbynttdata)
 
 # ------------------------------------------------------------------------------
 # Functions — Golang
@@ -146,6 +147,10 @@ define azuredevops_provider
 provider \"azuredevops\" {}\n
 endef
 
+define github_provider
+provider \"github\" {\n  owner = \"$(GITHUB_OWNER)\"\n}\n
+endef
+
 define provider_file_path
 $(1)/provider.tf
 endef
@@ -155,6 +160,7 @@ define add_provider_details
 	$(if $(findstring azure/azapi,$(2)),grep -qs "azapi" $(1) || bash -c 'echo -e "$(call azapi_provider)"' >> $(1),)
 	$(if $(findstring microsoft/azuredevops,$(2)),grep -qs "azuredevops" $(1) || bash -c 'echo -e "$(call azuredevops_provider)"' >> $(1),)
 	$(if $(findstring hashicorp/azurerm,$(2)),grep -qs "azurerm" $(1) || bash -c 'echo -e "$(call azurerm_provider)"' >> $(1),)
+	$(if $(findstring integrations/github,$(2)),grep -qs "github" $(1) || bash -c 'echo -e "$(call github_provider)"' >> $(1),)
 endef
 
 define create_example_providers
