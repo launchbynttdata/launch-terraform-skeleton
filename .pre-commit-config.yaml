@@ -32,3 +32,9 @@ repos:
         files: "(template/\\.github/workflows/.*\\.ya?ml|template/\\.github/dependabot\
           \\.yml)$"
         pass_filenames: false
+      - id: validate-readonly-test-selftest
+        name: Self-test the readonly-test guard
+        entry: scripts/test/validate-readonly-test.test.sh
+        language: script
+        files: "^(template/\\.github/scripts/validate-readonly-test\\.sh|scripts/test/validate-readonly-test\\.test\\.sh)$"
+        pass_filenames: false

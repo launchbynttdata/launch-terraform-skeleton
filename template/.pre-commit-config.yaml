@@ -34,3 +34,11 @@ repos:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
         exclude: package.lock.json
+  - repo: local
+    hooks:
+      - id: validate-readonly-test
+        name: Validate readonly test wiring (RunNonDestructiveTest + TestComposable*)
+        entry: .github/scripts/validate-readonly-test.sh
+        language: script
+        files: ^tests/post_deploy_functional_readonly/.*\.go$
+        pass_filenames: false
