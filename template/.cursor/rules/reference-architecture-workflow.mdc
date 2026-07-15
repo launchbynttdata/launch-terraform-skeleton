@@ -1,0 +1,17 @@
+---
+description: "Terraform reference architecture creation, cleanup, validation, testing, and documentation workflow"
+alwaysApply: false
+---
+
+# Reference Architecture Workflow
+
+Use this rule when creating or modifying a `tf-<provider>-module_reference-<architecture>` repository.
+
+Follow `.agents/skills/reference-architecture/SKILL.md`.
+
+Read these references only as needed:
+
+- `.agents/references/shared/terraform-module-standards.md`
+- `.agents/references/reference-architecture/standards.md`
+- `.agents/references/reference-architecture/testing.md`
+- `.agents/references/reference-architecture/release-history.md`
