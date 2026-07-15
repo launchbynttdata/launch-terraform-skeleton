@@ -9,7 +9,7 @@ Primitive tests must prove the Terraform interface and the cloud resource behavi
 - The two test packages must call different implementation functions.
 - Shared setup and provider clients belong in `tests/testimpl/`.
 - Use `t.Parallel()` where the test framework and provisioned resources support concurrent execution.
-- Functional tests deploy and clean up the complete example. Readonly tests assume deployed infrastructure and use the non-destructive Launch test helper when available.
+- Functional tests deploy and clean up the complete example. Readonly tests assume deployed infrastructure.
 
 ## Assertions
 
@@ -22,7 +22,16 @@ Primitive tests must prove the Terraform interface and the cloud resource behavi
 
 ## Readonly Tests
 
-Readonly tests must not create, update, invoke mutating operations, publish messages, write objects, or alter state. Use the non-destructive test helper provided by the Launch Terratest framework when available.
+Readonly tests must not create, update, invoke mutating operations, publish messages, write objects, or alter state.
+
+## Readonly Test Runner
+
+The readonly package (`tests/post_deploy_functional_readonly`) must:
+
+- Call `lib.RunNonDestructiveTest`, not `lib.RunSetupTestTeardown`. The setup/teardown runner turns a readonly suite into a full apply, test, and destroy flow.
+- Pass a `tests/testimpl` function whose name begins with `TestComposable`, such as `TestComposableCompleteReadOnly`. `lcaf-component-terratest` fails the test at runtime when the name does not meet this requirement.
+
+CI excludes the readonly binary from its test command, so both requirements must be correct by construction.
 
 ## Functional Tests
 
@@ -46,6 +55,7 @@ Functional tests should exercise the resource behavior, not just Terraform outpu
 
 - No configuration assertion uses `assert.NotEmpty` or `require.NotEmpty` when a specific value is available.
 - Functional and readonly entrypoints call different `tests/testimpl/` functions and are not copies of each other.
+- The readonly entrypoint uses `lib.RunNonDestructiveTest` and a `TestComposable*` implementation function.
 - Functional coverage includes a safe write or behavior operation when the resource supports one.
 - Readonly coverage performs no writes, invocation, publishing, resource creation, updates, or state changes.
 - Security-critical provider attributes are required and compared to expected values.

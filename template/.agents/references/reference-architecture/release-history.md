@@ -2,6 +2,10 @@
 
 This file preserves the learnings from the previous monolithic reference architecture guide.
 
+## 3.1
+
+- Skeleton updates now add the `.agents/`, `.claude/`, and `.cursor/` guidance trees. Reviewers of automatic update PRs should expect this additive template change.
+
 ## 2.0
 
 - Readonly tests must use non-destructive helpers. Add a skeleton transformation verification gate. Include Lambda source directories when examples need deployable source. Avoid duplicate CloudWatch log groups with `terraform-aws-modules/lambda/aws`. Use registry module source formats. Keep output prefixes consistent. Prefer `create_*` feature flags. Strengthen the ban on loose non-empty assertions.

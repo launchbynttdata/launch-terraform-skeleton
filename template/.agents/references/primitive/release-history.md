@@ -2,6 +2,10 @@
 
 This file preserves the learnings from the previous monolithic primitive module guide.
 
+## 2.1
+
+- Skeleton updates now add the `.agents/`, `.claude/`, and `.cursor/` guidance trees. Reviewers of automatic update PRs should expect this additive template change.
+
 ## 2.0
 
 - Split the legacy GitHub agent guide into an agent-agnostic skill and focused reference files. The legacy file is a compatibility stub; operational standards, creation and cleanup guidance, test guidance, and historical rationale now live separately.

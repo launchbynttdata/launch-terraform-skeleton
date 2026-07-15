@@ -12,9 +12,17 @@ Reference architecture tests must verify the composed infrastructure, not just T
 ## Destructive and Readonly Tests
 
 - Destructive or functional tests may create and exercise resources.
-- Readonly tests must not mutate state and must use non-destructive helpers when available.
-- Do not use setup/teardown helpers in readonly test packages.
+- Readonly tests must not mutate state.
 - Do not copy the destructive test body into the readonly test unchanged.
+
+## Readonly Test Runner
+
+The readonly package (`tests/post_deploy_functional_readonly`) must:
+
+- Call `lib.RunNonDestructiveTest`, not `lib.RunSetupTestTeardown`. The setup/teardown runner turns a readonly suite into a full apply, test, and destroy flow.
+- Pass a `tests/testimpl` function whose name begins with `TestComposable`, such as `TestComposableCompleteReadOnly`. `lcaf-component-terratest` fails the test at runtime when the name does not meet this requirement.
+
+CI excludes the readonly binary from its test command, so both requirements must be correct by construction.
 
 ## Assertions
 
