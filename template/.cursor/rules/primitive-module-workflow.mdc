@@ -1,0 +1,18 @@
+---
+description: "Terraform primitive module creation, cleanup, validation, testing, and documentation workflow"
+alwaysApply: false
+---
+
+# Primitive Module Workflow
+
+Use this rule when creating or modifying a `tf-<provider>-module_primitive-<resource>` repository.
+
+Follow `.agents/skills/primitive-module/SKILL.md`.
+
+Read these references only as needed:
+
+- `.agents/references/shared/terraform-module-standards.md`
+- `.agents/references/primitive/standards.md`
+- `.agents/references/primitive/creation.md`
+- `.agents/references/primitive/testing.md`
+- `.agents/references/primitive/release-history.md`

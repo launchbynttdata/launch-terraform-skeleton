@@ -1,0 +1,11 @@
+---
+alwaysApply: true
+---
+
+# Launch Agent Routing
+
+- Use `AGENTS.md` as the shared baseline for this repository.
+- For primitive module creation or cleanup, follow `.agents/skills/primitive-module/SKILL.md`.
+- For reference architecture creation or cleanup, follow `.agents/skills/reference-architecture/SKILL.md`.
+- Read files under `.agents/references/` only when a selected workflow routes you there.
+- Keep generated module changes small, explicit, and validated.
