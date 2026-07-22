@@ -32,5 +32,6 @@ This repository follows the Launch Terraform module standards. Keep this file sm
 ## Validation Expectations
 
 - Run the narrowest useful validation first, then broaden when the change affects shared behavior.
+- When creating a module with Terratest, update the Go baseline and dependency graph before considering the implementation complete; follow the shared Terraform module standards for the required commands and verification.
 - Before considering module creation complete, validate formatting, linting, Terraform initialization/validation for examples, README generation, and Terratest readiness where practical.
 - If full cloud-backed tests cannot be run, state what was validated and what remains unproven.

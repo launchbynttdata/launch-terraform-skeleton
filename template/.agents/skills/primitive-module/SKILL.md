@@ -24,8 +24,9 @@ Use this skill for repositories named `tf-<provider>-module_primitive-<resource>
 4. Implement one primitive resource interface with explicit variable types, descriptions, validations, resource outputs, and provider constraints.
 5. Build `examples/complete/` as the canonical secure usage example.
 6. Keep `README.md` derived from `TEMPLATED_README.md`; replace the module-specific sections and preserve skeleton development boilerplate.
-7. Add or update Terratest code so assertions verify specific expected values and security settings through provider APIs when applicable.
-8. Run focused validation, then broader checks such as formatting, linting, Terraform init/validate/plan for the example, README generation, and Go test build or Terratest where practical.
+7. Set the latest supported Go baseline and refresh the complete Go dependency graph as required by the shared Terraform module standards.
+8. Add or update Terratest code so assertions verify specific expected values and security settings through provider APIs when applicable.
+9. Run focused validation, then broader checks such as formatting, linting, Terraform init/validate/plan for the example, README generation, and Go test build or Terratest where practical.
 
 ## Completion Gate
 

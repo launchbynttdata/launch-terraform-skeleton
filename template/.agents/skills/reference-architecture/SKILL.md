@@ -24,8 +24,9 @@ Use this skill for repositories named `tf-<provider>-module_reference-<architect
 5. Use the resource naming module for all generated names. Do not ask consumers to provide names that the architecture should own.
 6. Model optional features with explicit `create_*` flags and coherent object validation.
 7. Build `examples/complete/` as the canonical secure architecture example, including required source assets such as Lambda source directories where applicable.
-8. Add or update Terratest coverage that validates the composed resources through provider APIs, differentiates destructive and readonly flows, and checks optional features enabled by the example.
-9. Run focused validation, then broader checks such as formatting, linting, Terraform init/validate/plan for the example, README generation, and Go test build or Terratest where practical.
+8. Set the latest supported Go baseline and refresh the complete Go dependency graph as required by the shared Terraform module standards.
+9. Add or update Terratest coverage that validates the composed resources through provider APIs, differentiates destructive and readonly flows, and checks optional features enabled by the example.
+10. Run focused validation, then broader checks such as formatting, linting, Terraform init/validate/plan for the example, README generation, and Go test build or Terratest where practical.
 
 ## Completion Gate
 

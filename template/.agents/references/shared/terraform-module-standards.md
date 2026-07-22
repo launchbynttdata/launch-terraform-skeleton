@@ -37,6 +37,8 @@ These standards apply to both primitive and reference architecture modules.
 
 - Prefer `mise run <task>` when a suitable task exists.
 - Otherwise use `mise exec -- <command>` for Terraform, Go, pre-commit, and related tools.
+- When creating a module with Terratest, set the Go version in `.tool-versions` and the `go` directive in `go.mod` to the latest stable version supported by Terratest and the repository tooling. Confirm the installed version with `mise exec -- go version`.
+- From the module root, refresh the complete Go dependency graph with `mise exec -- go get -u ./...`, then run `mise exec -- go mod tidy`. Verify `mise exec -- go list -m -u all` reports no remaining available module upgrades; resolve incompatibilities in the Terratest code rather than retaining stale dependencies.
 - Run formatting and linting before broader test flows.
 - For examples, validate initialization, Terraform validation, and plan where credentials and backend constraints allow.
 - For Go tests, run `go mod tidy`, build or targeted tests, and broader Terratest only when the required cloud access is available.
