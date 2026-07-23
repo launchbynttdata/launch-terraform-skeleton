@@ -16,11 +16,11 @@ jobs:
     steps:
       - id: checkout
         name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - id: setup-python
         name: Set up Python 3.14
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b
+        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39
         with:
           python-version: 3.14
 
@@ -32,7 +32,7 @@ jobs:
       # If we've cached the pre-commit environment, restore it based on the hash of the pre-commit config.
       - id: cache
         name: Restore cached pre-commit environment
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           path: ~/.cache/pre-commit
           key: ${{ runner.os }}-pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
@@ -42,7 +42,7 @@ jobs:
 
       - id: restore-asdf-tools
         name: Restore ASDF tools from cache
-        uses: actions/cache/restore@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
         with:
           key: ${{ runner.os }}-asdf-${{ hashFiles('.tool-versions') }}
           restore-keys: |
@@ -67,7 +67,7 @@ jobs:
       - id: set-status-check
         name: Set Status Check
         if: always()
-        uses: launchbynttdata/launch-workflows/.github/actions/update-status-check@ace9800af712a9d30230950becf5725deaf8518c
+        uses: launchbynttdata/launch-workflows/.github/actions/update-status-check@5398ca6b022453afbddfc9ed857398588669197b
         with:
           check_name: "Pre-Commit Checks"
           status: ${{ steps.pre-commit.outcome == 'success' && 'success' ||
