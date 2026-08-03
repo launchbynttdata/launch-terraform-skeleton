@@ -2,11 +2,15 @@
 #
 # Self-test for template/.github/scripts/check-terraform-version-floor.sh.
 #
-# The fragile part of that guard is resolving "oldest version this constraint
-# admits" from a required_version string, so that is asserted exhaustively and
-# without needing Terraform. The end-to-end path (does an old Terraform actually
-# reject a too-new module) is only exercised when a suitable old binary happens
-# to be installed, so pre-commit stays fast and offline.
+# Two of the guard's three behaviours need no Terraform at all and so run
+# everywhere, including this repo's CI (which installs no Terraform):
+#
+#   * resolving "oldest version this constraint admits" from a required_version
+#   * enforcing that every example declares a floor at or above the root's
+#
+# The third -- actually loading the repo with an old binary -- only runs when a
+# suitable old Terraform happens to be installed, so pre-commit stays fast and
+# offline.
 #
 # Wired into the skeleton's own pre-commit so the guard that protects every
 # module is itself protected against regression.
@@ -20,7 +24,19 @@ trap 'rm -rf "$workdir"' EXIT
 
 fails=0
 
-# resolves <constraint> <expected-floor|ERROR>
+pass_fail() {  # <name> <expected 0|1> <actual>
+  if [ "$3" -eq "$2" ]; then
+    echo "ok   - $1 (exit $3)"
+  else
+    echo "FAIL - $1: expected exit $2, got $3"
+    fails=$((fails + 1))
+  fi
+}
+
+# ------------------------------------------------------------------------------
+# 1. Floor resolution
+# ------------------------------------------------------------------------------
+
 resolves() {
   constraint="$1"; want="$2"
   dir="$workdir/resolve"; rm -rf "$dir"; mkdir -p "$dir"
@@ -53,8 +69,122 @@ resolves '<= 1.5.5'            'ERROR'
 resolves '< 2.0'               'ERROR'
 
 # ------------------------------------------------------------------------------
-# End-to-end: only if some Terraform older than 1.3 is available, since the
-# fixture below relies on optional() being rejected.
+# 2. The example/root floor relation: every example must declare >= the root.
+#
+# Checked before any binary is acquired, so this needs no Terraform.
+# ------------------------------------------------------------------------------
+
+# make_repo <dir> <root-constraint> <example-constraint...>
+make_repo() {
+  d="$1"; rootc="$2"; shift 2
+  rm -rf "$d"; mkdir -p "$d"
+  printf 'terraform {\n  required_version = "%s"\n}\n' "$rootc" > "$d/versions.tf"
+  printf 'variable "x" {\n  type    = string\n  default = "ok"\n}\n' > "$d/variables.tf"
+  i=0
+  for ec in "$@"; do
+    i=$((i + 1))
+    mkdir -p "$d/examples/ex$i"
+    printf 'terraform {\n  required_version = "%s"\n}\n' "$ec" > "$d/examples/ex$i/versions.tf"
+    printf 'module "m" {\n  source = "../.."\n}\n' > "$d/examples/ex$i/main.tf"
+  done
+}
+
+# Asserts on the pre-binary phase only: run the guard and look for the rejection
+# message, so these cases stay offline even when the constraint would pass.
+rejects_before_binary() {  # <name> <pattern> <root> <example...>
+  name="$1"; pattern="$2"; shift 2
+  make_repo "$workdir/rel" "$@"
+  set +e
+  out="$( cd "$workdir/rel" && "$script" 2>&1 )"
+  set -e
+  if printf '%s' "$out" | grep -q "$pattern"; then
+    echo "ok   - $name"
+  else
+    echo "FAIL - $name: expected output matching '$pattern'"
+    fails=$((fails + 1))
+  fi
+}
+
+accepts_relation() {  # <name> <root> <example...>
+  name="$1"; shift
+  make_repo "$workdir/rel" "$@"
+  set +e
+  out="$( cd "$workdir/rel" && "$script" 2>&1 )"
+  set -e
+  if printf '%s' "$out" | grep -qE "below the root's|declares no required_version"; then
+    echo "FAIL - $name: relation was rejected"
+    fails=$((fails + 1))
+  else
+    echo "ok   - $name"
+  fi
+}
+
+echo "== example/root floor relation =="
+
+rejects_before_binary "example below the root is rejected" \
+  "below the root's" '~> 1.5' '~> 1.2'
+
+accepts_relation "example equal to the root is accepted" '~> 1.5' '~> 1.5'
+
+# The point of >= over ==: an example may legitimately need a newer Terraform
+# (its own feature use, or a module it consumes) without dragging the root up.
+accepts_relation "example above the root is accepted" '~> 1.3' '~> 1.5'
+
+accepts_relation "whitespace-only difference is not a violation" '~> 1.5' '~>  1.5'
+
+# Patch-level and two-component constraints must compare numerically, not
+# lexically -- 1.10 is above 1.9, and "1.9" > "1.10" as strings.
+accepts_relation "1.10 example over a 1.9 root is accepted" '~> 1.9' '~> 1.10'
+rejects_before_binary "1.9 example under a 1.10 root is rejected" \
+  "below the root's" '~> 1.10' '~> 1.9'
+
+# An example that declares nothing is not "inheriting" the root -- it is silent
+# about a contract it is required to state.
+make_repo "$workdir/silent" '~> 1.5' '~> 1.5'
+printf 'terraform {\n}\n' > "$workdir/silent/examples/ex1/versions.tf"
+set +e; out="$( cd "$workdir/silent" && "$script" 2>&1 )"; rc=$?; set -e
+if printf '%s' "$out" | grep -q "declares no required_version"; then
+  echo "ok   - example with no required_version is rejected"
+else
+  echo "FAIL - example with no required_version: expected a clear rejection"
+  fails=$((fails + 1))
+fi
+
+make_repo "$workdir/nofile" '~> 1.5' '~> 1.5'
+rm -f "$workdir/nofile/examples/ex1/versions.tf"
+set +e; out="$( cd "$workdir/nofile" && "$script" 2>&1 )"; rc=$?; set -e
+if printf '%s' "$out" | grep -q "must declare a required_version"; then
+  echo "ok   - example with no versions.tf is rejected"
+else
+  echo "FAIL - example with no versions.tf: expected a clear rejection"
+  fails=$((fails + 1))
+fi
+
+# A root that exists but declares nothing must produce the diagnostic, not die
+# silently: under `set -e` with pipefail a non-matching grep would abort first.
+rm -rf "$workdir/rootless"; mkdir -p "$workdir/rootless"
+printf 'terraform {\n}\n' > "$workdir/rootless/versions.tf"
+set +e; out="$( cd "$workdir/rootless" && "$script" 2>&1 )"; rc=$?; set -e
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "no required_version found"; then
+  echo "ok   - root with no required_version reports why"
+else
+  echo "FAIL - root with no required_version: expected a diagnostic, got '${out:-<silence>}'"
+  fails=$((fails + 1))
+fi
+
+# --print-floor feeds a CI cache key, so it must report the ROOT floor even when
+# an example declares something higher.
+make_repo "$workdir/printfloor" '~> 1.3' '~> 1.9'
+set +e; actual="$( cd "$workdir/printfloor" && "$script" --print-floor 2>/dev/null )"; set -e
+if [ "$actual" = "1.3.0" ]; then
+  echo "ok   - --print-floor reports the root floor, not an example's"
+else
+  echo "FAIL - --print-floor: expected 1.3.0, got ${actual:-<empty>}"
+  fails=$((fails + 1))
+fi
+
+# ------------------------------------------------------------------------------
+# 3. End-to-end, only when an old enough Terraform is present
 # ------------------------------------------------------------------------------
 
 old_tf=""
@@ -63,33 +193,22 @@ for candidate in "${ASDF_DATA_DIR:-$HOME/.asdf}"/installs/terraform/1.[012].*; d
 done
 
 if [ -z "$old_tf" ]; then
-  echo "skip - end-to-end check (no Terraform < 1.3 installed)"
+  echo "skip - end-to-end checks (no Terraform < 1.3 installed)"
 else
   ver="$("$old_tf" version | head -1 | sed -E 's/Terraform v//')"
   echo "== end-to-end against Terraform $ver =="
 
-  # expects <name> <pass|fail> ; variables.tf body on stdin
-  expects() {
-    name="$1"; expected="$2"
-    dir="$workdir/$name"; rm -rf "$dir"; mkdir -p "$dir"
-    printf 'terraform {\n  required_version = "= %s"\n}\n' "$ver" > "$dir/versions.tf"
-    cat > "$dir/variables.tf"
-    want=0; [ "$expected" = "fail" ] && want=1
-    set +e
-    ( cd "$dir" && "$script" >/dev/null 2>&1 )
-    actual=$?
-    set -e
-    if [ "$actual" -eq "$want" ]; then
-      echo "ok   - $name (exit $actual)"
-    else
-      echo "FAIL - $name: expected exit $want, got $actual"
-      fails=$((fails + 1))
-    fi
-  }
+  # Honest floor everywhere: must pass.
+  make_repo "$workdir/honest" "= $ver" "= $ver"
+  set +e; ( cd "$workdir/honest" && "$script" >/dev/null 2>&1 ); rc=$?; set -e
+  pass_fail "honest floor passes" 0 "$rc"
 
-  # optional() needs >= 1.3, so declaring this older version must be rejected.
-  expects understated-floor fail <<'TF'
-variable "thing" {
+  # The case that root-only checking missed: the ROOT is fine at this version,
+  # but an EXAMPLE uses optional(), which needs >= 1.3.
+  make_repo "$workdir/example-too-low" "= $ver" "= $ver"
+  cat >> "$workdir/example-too-low/examples/ex1/main.tf" <<'TF'
+
+variable "needs_13" {
   type = object({
     name    = string
     enabled = optional(bool, true)
@@ -97,14 +216,45 @@ variable "thing" {
   default = null
 }
 TF
+  set +e; ( cd "$workdir/example-too-low" && "$script" >/dev/null 2>&1 ); rc=$?; set -e
+  pass_fail "example needing a newer Terraform than the root is rejected" 1 "$rc"
 
-  # Nothing version-gated: the declared floor is honest and must pass.
-  expects accurate-floor pass <<'TF'
-variable "thing" {
-  type    = string
-  default = "ok"
+  # The same example passes once it declares the floor it actually needs -- and
+  # the root keeps its older floor. This is the case == would have blocked.
+  new_tf=""
+  for candidate in "${ASDF_DATA_DIR:-$HOME/.asdf}"/installs/terraform/1.[3-9].* \
+                   "${ASDF_DATA_DIR:-$HOME/.asdf}"/installs/terraform/1.[1-9][0-9].*; do
+    [ -x "$candidate/bin/terraform" ] && new_tf="$candidate"
+  done
+  if [ -z "$new_tf" ]; then
+    echo "skip - example-above-root end-to-end (no Terraform >= 1.3 installed)"
+  else
+    newver="$(basename "$new_tf")"
+    # The root is >= rather than = here on purpose: Terraform enforces every
+    # required_version in the tree, so an exact-pinned root and a higher example
+    # are contradictory and cannot both be satisfied. That is a real (and
+    # correctly rejected) configuration, not the one under test.
+    make_repo "$workdir/example-higher" ">= $ver" "= $newver"
+    cat >> "$workdir/example-higher/examples/ex1/main.tf" <<'TF'
+
+variable "needs_13" {
+  type = object({
+    name    = string
+    enabled = optional(bool, true)
+  })
+  default = null
 }
 TF
+    set +e
+    out="$( cd "$workdir/example-higher" && "$script" 2>&1 )"; rc=$?
+    set -e
+    if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "ok: the root module on Terraform $ver"; then
+      echo "ok   - example above the root loads at its own floor, root stays at $ver"
+    else
+      echo "FAIL - example above the root: expected pass with root still on $ver (exit $rc)"
+      fails=$((fails + 1))
+    fi
+  fi
 fi
 
 if [ "$fails" -gt 0 ]; then
