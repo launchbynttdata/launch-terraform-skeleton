@@ -38,3 +38,9 @@ repos:
         language: script
         files: "^(template/\\.github/scripts/validate-readonly-test\\.sh|scripts/test/validate-readonly-test\\.test\\.sh)$"
         pass_filenames: false
+      - id: check-terraform-version-floor-selftest
+        name: Self-test the Terraform version-floor guard
+        entry: scripts/test/check-terraform-version-floor.test.sh
+        language: script
+        files: "^(template/\\.github/scripts/check-terraform-version-floor\\.sh|scripts/test/check-terraform-version-floor\\.test\\.sh)$"
+        pass_filenames: false
