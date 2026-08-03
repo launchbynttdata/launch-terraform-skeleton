@@ -11,7 +11,7 @@ This repository follows the Launch Terraform module standards. Keep this file sm
 - Treat examples and tests as part of the public contract. Update them with implementation changes.
 - Do not preserve skeleton placeholders, TODOs, or copied template names in completed modules.
 - Do not introduce provider-specific guidance into shared rules unless it is clearly labeled by provider.
-- Use `mise` for local tool execution when available. Prefer `mise run <task>` for configured tasks and `mise exec -- <command>` otherwise.
+- **Toolchain managers (mise / asdf):** install pinned tools from `.tool-versions` (`mise install` preferred, or `make configure` / asdf when mise is unavailable), activate the environment so shims are on `PATH`, then run managed tools **by name** (`terraform`, `go`, `pre-commit`, `make lint`) as if natively installed. Do not wrap every invocation in `mise exec --` or `asdf exec`. Use extended manager features only when they add value: `mise run <task>` for repo-defined tasks, installing tools, or selecting an **alternate version** (not the repo default).
 - Use SSH-based Git remotes or `gh` for GitHub repository operations. If SSH or `gh` is not working, stop and resolve that rather than silently switching to HTTPS Git remotes.
 - GitHub API access through `gh api` or `gh api graphql` is acceptable when repository metadata is needed.
 
