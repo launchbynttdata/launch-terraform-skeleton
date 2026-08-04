@@ -33,12 +33,23 @@ These standards apply to both primitive and reference architecture modules.
 - `examples/complete/README.md` must match `examples/complete/main.tf`, variables, and outputs.
 - Do not leave empty terraform-docs blocks.
 
+## Toolchain managers
+
+Install pinned tools from `.tool-versions` with `mise install` (preferred) or `make configure` (mise or asdf). Keep the manager environment active so shims are on `PATH`, then invoke managed tools **by name** — the same way you would if they were natively installed. Do not prefix every command with `mise exec --` or `asdf exec`.
+
+Use extended manager features when they earn their keep:
+
+- `mise run <task>` — repo-defined tasks and orchestration
+- `mise install` / `asdf install` — installing a pinned or alternate tool version
+- version selection APIs — when the work needs a Terraform or other tool version that is **not** the repo default (see `.github/scripts/check-terraform-version-floor.sh`)
+
+If a tool is missing, install and activate the environment first; do not treat `mise exec --` as the default invocation style.
+
 ## Validation
 
-- Prefer `mise run <task>` when a suitable task exists.
-- Otherwise use `mise exec -- <command>` for Terraform, Go, pre-commit, and related tools.
-- When creating a module with Terratest, set the Go version in `.tool-versions` and the `go` directive in `go.mod` to the latest stable version supported by Terratest and the repository tooling. Confirm the installed version with `mise exec -- go version`.
-- From the module root, refresh the complete Go dependency graph with `mise exec -- go get -u ./...`, then run `mise exec -- go mod tidy`. Verify `mise exec -- go list -m -u all` reports no remaining available module upgrades; resolve incompatibilities in the Terratest code rather than retaining stale dependencies.
+- Prefer Makefile targets (`make lint`, `make check`, `make test`) and `pre-commit run` when they cover the work.
+- When creating a module with Terratest, set the Go version in `.tool-versions` and the `go` directive in `go.mod` to the latest stable version supported by Terratest and the repository tooling. Confirm the installed version with `go version`.
+- From the module root, refresh the complete Go dependency graph with `go get -u ./...`, then run `go mod tidy`. Verify `go list -m -u all` reports no remaining available module upgrades; resolve incompatibilities in the Terratest code rather than retaining stale dependencies.
 - Run formatting and linting before broader test flows.
 - For examples, validate initialization, Terraform validation, and plan where credentials and backend constraints allow.
 - For Go tests, run `go mod tidy`, build or targeted tests, and broader Terratest only when the required cloud access is available.
