@@ -73,7 +73,7 @@ For every optional object, validate all of the following where applicable:
 ## Version Constraints
 
 - Set a Terraform version and provider constraints that avoid untested major upgrades.
-- Pin providers to an appropriate compatible minor range, following the current skeleton and provider-specific precedent.
+- Do not set a floor higher than the features require. A sibling module's constraint is not a justification.
 - The floor must be real: if the module uses a resource argument or behavior introduced in a specific provider release, the constraint must require at least that release.
 - Prefer an explicit comment in `versions.tf` when a floor exists because of a particular feature.
 - Keep provider configuration out of the root module; examples own provider configuration.
