@@ -21,7 +21,7 @@ Use this skill for repositories named `tf-<provider>-module_primitive-<resource>
 1. Confirm the target cloud provider and single resource type.
 2. Inspect the existing repository structure and current Terraform files.
 3. Remove skeleton remnants and rename template resources, tests, imports, package names, and README content.
-4. Implement one primitive resource interface with explicit variable types, descriptions, validations, resource outputs, and provider constraints.
+4. Implement one primitive resource interface with explicit variable types, descriptions, validations, resource outputs, and provider constraints whose floors match the features actually used.
 5. Build `examples/complete/` as the canonical secure usage example.
 6. Keep `README.md` derived from `TEMPLATED_README.md`; replace the module-specific sections and preserve skeleton development boilerplate.
 7. Set the latest supported Go baseline and refresh the complete Go dependency graph as required by the shared Terraform module standards.
@@ -37,4 +37,5 @@ Use this skill for repositories named `tf-<provider>-module_primitive-<resource>
 - Functional and readonly tests are meaningfully different.
 - Tests avoid `assert.NotEmpty` or `require.NotEmpty` when a specific expected value is known.
 - Security features configured by the module are verified through provider APIs where practical.
+- Terraform and provider version floors admit only versions that support every feature the module uses.
 - No TODO placeholders, skeleton resources, stale imports, or template names remain.
