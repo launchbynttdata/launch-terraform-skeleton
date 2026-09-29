@@ -26,6 +26,14 @@ These standards apply to both primitive and reference architecture modules.
 - If an output `id` equals another attribute, say so in the description.
 - Provider and module version constraints should be bounded enough to avoid untested major upgrades.
 
+## Version Floors
+
+- Set real Terraform and provider version floors for the features and capabilities the module actually uses.
+- Derive floors from language features, resources, arguments, and behaviors present in the module and examples — not from a generic major range such as `>= 4.0`.
+- Keep an upper bound that excludes the next untested major when the module is not claimed compatible with it.
+- Examples must declare at least the root module floors and may declare higher floors when their own dependencies require them.
+- Validate with the oldest admitted Terraform and provider versions when practical. CI resolving a newer compatible release is not proof that the declared floor is honest.
+
 ## Documentation
 
 - Keep the root `README.md` derived from `TEMPLATED_README.md`.

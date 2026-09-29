@@ -9,6 +9,7 @@ Reference architecture modules compose multiple primitives and selected communit
 - Use mature public registry modules for complex AWS patterns when they reduce implementation risk.
 - Use registry source addresses, not `git::` module URLs.
 - Use bounded version constraints for internal and community modules.
+- Set Terraform and provider floors from the features the architecture and examples actually use; a generic major range is not enough when a composed module or provider argument requires a higher release.
 - Keep feature flags named `create_*` for optional resources.
 
 ## Required Structure

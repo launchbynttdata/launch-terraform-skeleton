@@ -6,7 +6,7 @@ Use this reference when converting the skeleton into a primitive module or revie
 
 1. Confirm the provider and one target resource type. Review the provider documentation and a similar primitive for that provider.
 2. For AWS, consult the official service API reference when practical. Translate documented ranges, enums, formats, and cross-field constraints into variable validation and descriptions. If no suitable public API reference is found after a reasonable search, proceed using provider documentation rather than retrying indefinitely.
-3. Implement `versions.tf`, `variables.tf`, `main.tf`, and `outputs.tf` using the primitive standards.
+3. Implement `versions.tf`, `variables.tf`, `main.tf`, and `outputs.tf` using the primitive standards. Set Terraform and provider floors from the features used by those files, not from a generic major range.
 4. Build `examples/complete/` with its Terraform files, an accurate README, resource naming, and any deployable prerequisite resources.
 5. Before writing cloud-backed tests, run the available example validation flow: formatting and linting, init, validate, plan, apply, and destroy. Resolve failures before continuing when credentials and environment access permit.
 6. Add Terratest coverage, then run the Go quality checks in the testing reference before cloud-backed test execution.
@@ -34,6 +34,7 @@ Before completion:
 ## Completion Checklist
 
 - Root variables have explicit types, descriptions, required validation, and coherent optional objects.
+- Root and example `versions.tf` floors require Terraform and provider versions that support every feature the module uses.
 - Root outputs exist in the provider schema, have descriptions, and match the intended composition interface.
 - The complete example passes every root variable through, exposes test-consumed outputs, and uses the secure configuration.
 - Root and example documentation are synchronized and complete.
