@@ -184,7 +184,77 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# 3. End-to-end, only when an old enough Terraform is present
+# 3. Binary resolution, offline, against stubs
+#
+# A fake mise answers only the real `mise which terraform --tool terraform@<v>`
+# form, a fake terraform accepts init/validate, and uname/file are stubbed so
+# the architecture check behaves the same on any host. asdf is kept off PATH
+# and ASDF_DATA_DIR points at an empty directory.
+# ------------------------------------------------------------------------------
+
+echo "== binary resolution (stubs) =="
+
+stubs="$workdir/stubs"; fake_mise_root="$workdir/mise-installs"
+mkdir -p "$stubs" "$workdir/no-asdf" "$fake_mise_root/1.5.0"
+printf '#!/bin/sh\necho "fake terraform $*"\n' > "$fake_mise_root/1.5.0/terraform"
+cat > "$stubs/mise" <<STUB
+#!/bin/sh
+if [ "\$1" = which ] && [ "\$2" = terraform ] && [ "\$3" = --tool ]; then
+  p="$fake_mise_root/\${4#terraform@}/terraform"
+  [ -x "\$p" ] && { echo "\$p"; exit 0; }
+  exit 1
+fi
+[ "\$1" = install ] && exit 0
+echo "error: unexpected argument" >&2
+exit 2
+STUB
+chmod +x "$stubs/mise" "$fake_mise_root/1.5.0/terraform"
+
+# with_host <uname -s> <file description> <cmd...>
+with_host() {
+  host="$1"; desc="$2"; shift 2
+  hostbin="$workdir/host-$host"; rm -rf "$hostbin"; mkdir -p "$hostbin"
+  printf '#!/bin/sh\ncase "$1" in -s) echo %s ;; -m) echo arm64 ;; esac\n' "$host" > "$hostbin/uname"
+  printf '#!/bin/sh\necho "%s"\n' "$desc" > "$hostbin/file"
+  chmod +x "$hostbin/uname" "$hostbin/file"
+  PATH="$hostbin:$stubs:/usr/bin:/bin" ASDF_DATA_DIR="$workdir/no-asdf" "$@"
+}
+
+make_repo "$workdir/mise" '~> 1.5' '~> 1.5'
+set +e
+out="$( cd "$workdir/mise" && with_host Darwin "Mach-O 64-bit executable arm64" "$script" 2>&1 )"; rc=$?
+set -e
+if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "ok: the root module on Terraform 1.5.0"; then
+  echo "ok   - mise-only host resolves Terraform through mise which --tool"
+else
+  echo "FAIL - mise-only host: expected the floor to load via mise (exit $rc): $out"
+  fails=$((fails + 1))
+fi
+
+set +e
+out="$( cd "$workdir/mise" && with_host Darwin "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
+set -e
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "not built for this arm64 host" \
+   && ! printf '%s' "$out" | grep -q "ok: the root module"; then
+  echo "ok   - an amd64 binary on an arm64 Mac is refused before it runs"
+else
+  echo "FAIL - amd64 binary on an arm64 Mac: expected a refusal (exit $rc): $out"
+  fails=$((fails + 1))
+fi
+
+set +e
+out="$( cd "$workdir/mise" && with_host Darwin "Mach-O universal binary with 2 architectures: [x86_64] [arm64]" "$script" 2>&1 )"; rc=$?
+set -e
+pass_fail "a universal binary is accepted" 0 "$rc"
+
+# Off macOS the description is never consulted, whatever it says.
+set +e
+out="$( cd "$workdir/mise" && with_host Linux "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
+set -e
+pass_fail "the architecture check applies only on macOS" 0 "$rc"
+
+# ------------------------------------------------------------------------------
+# 4. End-to-end, only when an old enough Terraform is present
 # ------------------------------------------------------------------------------
 
 old_tf=""

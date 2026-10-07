@@ -181,27 +181,41 @@ resolve_binary() {
   candidate="${ASDF_DATA_DIR:-${HOME}/.asdf}/installs/terraform/${version}/bin/terraform"
   if [[ -x "${candidate}" ]]; then printf '%s' "${candidate}"; return 0; fi
   if command -v mise >/dev/null 2>&1; then
-    candidate="$(mise which terraform --version "${version}" 2>/dev/null || true)"
+    candidate="$(mise which terraform --tool "terraform@${version}" 2>/dev/null || true)"
     if [[ -n "${candidate}" && -x "${candidate}" ]]; then printf '%s' "${candidate}"; return 0; fi
   fi
   return 1
 }
 
+# True unless the binary is a macOS Mach-O built without this host's
+# architecture. Where a release has no darwin_arm64 build (Terraform 1.0.0),
+# mise installs the darwin_amd64 one instead of failing as asdf does, and under
+# Rosetta its providers can fail to load -- output indistinguishable from a
+# real floor violation.
+native_binary() {
+  [[ "$(uname -s)" == Darwin ]] || return 0
+  local desc
+  desc="$(file -b "$1" 2>/dev/null)" || return 0
+  [[ "${desc}" != *Mach-O* || "${desc}" == *"$(uname -m)"* ]]
+}
+
 ensure_binary() {
   local version="$1" bin
-  if bin="$(resolve_binary "${version}")"; then printf '%s' "${bin}"; return 0; fi
-  if command -v asdf >/dev/null 2>&1; then
-    echo "==> Installing Terraform ${version} via asdf" >&2
-    asdf install terraform "${version}" >&2 \
-      || die "asdf could not install Terraform ${version} (does a build exist for this platform?)"
-  elif command -v mise >/dev/null 2>&1; then
-    echo "==> Installing Terraform ${version} via mise" >&2
-    mise install "terraform@${version}" >&2 \
-      || die "mise could not install Terraform ${version} (does a build exist for this platform?)"
-  else
-    die "Terraform ${version} is not installed and neither asdf nor mise is available to install it"
+  if ! bin="$(resolve_binary "${version}")"; then
+    if command -v asdf >/dev/null 2>&1; then
+      echo "==> Installing Terraform ${version} via asdf" >&2
+      asdf install terraform "${version}" >&2 \
+        || die "asdf could not install Terraform ${version} (does a build exist for this platform?)"
+    elif command -v mise >/dev/null 2>&1; then
+      echo "==> Installing Terraform ${version} via mise" >&2
+      mise install "terraform@${version}" >&2 \
+        || die "mise could not install Terraform ${version} (does a build exist for this platform?)"
+    else
+      die "Terraform ${version} is not installed and neither asdf nor mise is available to install it"
+    fi
+    bin="$(resolve_binary "${version}")" || die "install reported success but Terraform ${version} was not found"
   fi
-  bin="$(resolve_binary "${version}")" || die "install reported success but Terraform ${version} was not found"
+  native_binary "${bin}" || die "Terraform ${version} resolved to ${bin}, which is not built for this $(uname -m) host ($(file -b "${bin}" 2>/dev/null)). Under emulation its providers can fail to load in a way that reads like a floor violation, so the check stops here. If ${version} has no native build for this platform, this floor can only be checked in CI."
   printf '%s' "${bin}"
 }
 
