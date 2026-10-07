@@ -195,7 +195,10 @@ resolve_binary() {
 native_binary() {
   [[ "$(uname -s)" == Darwin ]] || return 0
   local desc
-  desc="$(file -b "$1" 2>/dev/null)" || return 0
+  if ! desc="$(file -b "$1" 2>/dev/null)"; then
+    echo "    note: \`file\` could not describe ${1}; skipping the architecture check" >&2
+    return 0
+  fi
   [[ "${desc}" != *Mach-O* || "${desc}" == *"$(uname -m)"* ]]
 }
 

@@ -2,15 +2,16 @@
 #
 # Self-test for template/.github/scripts/check-terraform-version-floor.sh.
 #
-# Two of the guard's three behaviours need no Terraform at all and so run
-# everywhere, including this repo's CI (which installs no Terraform):
+# Most of the guard's behaviour needs no real Terraform and so runs everywhere,
+# including this repo's CI (which installs no Terraform):
 #
 #   * resolving "oldest version this constraint admits" from a required_version
 #   * enforcing that every example declares a floor at or above the root's
+#   * finding a binary under asdf or mise, and refusing one built for another
+#     CPU on macOS (against a stub mise, terraform, uname and file)
 #
-# The third -- actually loading the repo with an old binary -- only runs when a
-# suitable old Terraform happens to be installed, so pre-commit stays fast and
-# offline.
+# Actually loading the repo with an old binary only runs when a suitable old
+# Terraform happens to be installed, so pre-commit stays fast and offline.
 #
 # Wired into the skeleton's own pre-commit so the guard that protects every
 # module is itself protected against regression.
@@ -210,19 +211,23 @@ exit 2
 STUB
 chmod +x "$stubs/mise" "$fake_mise_root/1.5.0/terraform"
 
-# with_host <uname -s> <file description> <cmd...>
+# with_host <uname -s> <uname -m> <file description, or FAIL> <cmd...>
 with_host() {
-  host="$1"; desc="$2"; shift 2
-  hostbin="$workdir/host-$host"; rm -rf "$hostbin"; mkdir -p "$hostbin"
-  printf '#!/bin/sh\ncase "$1" in -s) echo %s ;; -m) echo arm64 ;; esac\n' "$host" > "$hostbin/uname"
-  printf '#!/bin/sh\necho "%s"\n' "$desc" > "$hostbin/file"
+  host="$1"; arch="$2"; desc="$3"; shift 3
+  hostbin="$workdir/host-$host-$arch"; rm -rf "$hostbin"; mkdir -p "$hostbin"
+  printf '#!/bin/sh\ncase "$1" in -s) echo %s ;; -m) echo %s ;; esac\n' "$host" "$arch" > "$hostbin/uname"
+  if [ "$desc" = FAIL ]; then
+    printf '#!/bin/sh\nexit 1\n' > "$hostbin/file"
+  else
+    printf '#!/bin/sh\necho "%s"\n' "$desc" > "$hostbin/file"
+  fi
   chmod +x "$hostbin/uname" "$hostbin/file"
   PATH="$hostbin:$stubs:/usr/bin:/bin" ASDF_DATA_DIR="$workdir/no-asdf" "$@"
 }
 
 make_repo "$workdir/mise" '~> 1.5' '~> 1.5'
 set +e
-out="$( cd "$workdir/mise" && with_host Darwin "Mach-O 64-bit executable arm64" "$script" 2>&1 )"; rc=$?
+out="$( cd "$workdir/mise" && with_host Darwin arm64 "Mach-O 64-bit executable arm64" "$script" 2>&1 )"; rc=$?
 set -e
 if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "ok: the root module on Terraform 1.5.0"; then
   echo "ok   - mise-only host resolves Terraform through mise which --tool"
@@ -232,7 +237,7 @@ else
 fi
 
 set +e
-out="$( cd "$workdir/mise" && with_host Darwin "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
+out="$( cd "$workdir/mise" && with_host Darwin arm64 "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
 set -e
 if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "not built for this arm64 host" \
    && ! printf '%s' "$out" | grep -q "ok: the root module"; then
@@ -243,15 +248,37 @@ else
 fi
 
 set +e
-out="$( cd "$workdir/mise" && with_host Darwin "Mach-O universal binary with 2 architectures: [x86_64] [arm64]" "$script" 2>&1 )"; rc=$?
+out="$( cd "$workdir/mise" && with_host Darwin arm64 "Mach-O universal binary with 2 architectures: [x86_64] [arm64]" "$script" 2>&1 )"; rc=$?
 set -e
 pass_fail "a universal binary is accepted" 0 "$rc"
 
 # Off macOS the description is never consulted, whatever it says.
 set +e
-out="$( cd "$workdir/mise" && with_host Linux "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
+out="$( cd "$workdir/mise" && with_host Linux arm64 "Mach-O 64-bit executable x86_64" "$script" 2>&1 )"; rc=$?
 set -e
 pass_fail "the architecture check applies only on macOS" 0 "$rc"
+
+# The other direction: an arm64-only binary on an Intel Mac is refused too.
+set +e
+out="$( cd "$workdir/mise" && with_host Darwin x86_64 "Mach-O 64-bit executable arm64" "$script" 2>&1 )"; rc=$?
+set -e
+if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -q "not built for this x86_64 host"; then
+  echo "ok   - an arm64 binary on an Intel Mac is refused before it runs"
+else
+  echo "FAIL - arm64 binary on an Intel Mac: expected a refusal (exit $rc): $out"
+  fails=$((fails + 1))
+fi
+
+# When `file` can't describe the binary, the check is skipped visibly, not silently.
+set +e
+out="$( cd "$workdir/mise" && with_host Darwin arm64 FAIL "$script" 2>&1 )"; rc=$?
+set -e
+if [ "$rc" -eq 0 ] && printf '%s' "$out" | grep -q "skipping the architecture check"; then
+  echo "ok   - a failing \`file\` skips the check with a note"
+else
+  echo "FAIL - failing file: expected a pass with a note (exit $rc): $out"
+  fails=$((fails + 1))
+fi
 
 # ------------------------------------------------------------------------------
 # 4. End-to-end, only when an old enough Terraform is present
