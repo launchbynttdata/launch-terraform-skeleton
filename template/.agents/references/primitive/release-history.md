@@ -2,6 +2,12 @@
 
 This file preserves the learnings from the previous monolithic primitive module guide.
 
+## 2.2
+
+- Nullable validations need conditional expressions, because Terraform evaluates both sides of `||`. Validate only rules the module can evaluate fully, from the provider schema at the declared floor and current service documentation; leave context-dependent service limits to the API. The service documentation check now covers Azure and GCP, not only AWS.
+- The root floor comes from the root's own arguments; an example-only sibling raises only the example's floor.
+- Run plan, apply, and a second empty plan (including outputs) on the example before opening a pull request. Compare Azure resource IDs case-insensitively in tests.
+
 ## 2.1
 
 - Skeleton updates now add the `.agents/`, `.claude/`, and `.cursor/` guidance trees. Reviewers of automatic update PRs should expect this additive template change.

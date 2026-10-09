@@ -5,10 +5,10 @@ Use this reference when converting the skeleton into a primitive module or revie
 ## Creation Flow
 
 1. Confirm the provider and one target resource type. Review the provider documentation and a similar primitive for that provider.
-2. For AWS, consult the official service API reference when practical. Translate documented ranges, enums, formats, and cross-field constraints into variable validation and descriptions. If no suitable public API reference is found after a reasonable search, proceed using provider documentation rather than retrying indefinitely.
+2. Run the service documentation check in the primitive standards. Translate documented ranges, enums, formats, and cross-field constraints into variable validation and descriptions. If no suitable public reference is found after a reasonable search, proceed using provider documentation rather than retrying indefinitely.
 3. Implement `versions.tf`, `variables.tf`, `main.tf`, and `outputs.tf` using the primitive standards. Set Terraform and provider floors from the features used by those files, not from a generic major range.
 4. Build `examples/complete/` with its Terraform files, an accurate README, resource naming, and any deployable prerequisite resources.
-5. Before writing cloud-backed tests, run the available example validation flow: formatting and linting, init, validate, plan, apply, and destroy. Resolve failures before continuing when credentials and environment access permit.
+5. Before writing cloud-backed tests, run the available example validation flow: formatting and linting, init, validate, plan, apply, plan again, and destroy. The second plan must report no changes, including no `Changes to Outputs`; output-only drift fails the functional test's empty-plan check. Resolve failures before continuing when credentials and environment access permit. Do not open a pull request without at least a successful example plan. If apply was not possible, say so in the pull request.
 6. Add Terratest coverage, then run the Go quality checks in the testing reference before cloud-backed test execution.
 7. Build root `README.md` from `TEMPLATED_README.md`, replace the module-specific title and overview, add usage, retain the development boilerplate, and populate terraform-docs.
 8. Run the cleanup and completion checks below.

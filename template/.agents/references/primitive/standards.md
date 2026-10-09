@@ -50,6 +50,9 @@ go.sum
 - Use `object()` with `optional()` attributes for structured optional configuration.
 - Add validation for provider-enforced numeric bounds, enums, formats, mutually exclusive inputs, and cross-field requirements.
 - Nullable validation expressions must avoid evaluating null values, for example with a conditional expression. Use `try()` for nested optional object attributes.
+- Terraform evaluates both sides of `||`, so `var.x == null || var.x >= 0` fails at plan when `var.x` is null. Write `var.x == null ? true : var.x >= 0`. The same applies to attribute access on a null object, such as `var.obj.field` when `var.obj` is null.
+- Validate a rule only when the module can evaluate all of it. Take bounds from the provider schema at the declared floor and from current service documentation, not from an older provider release. When a service rule depends on context the module cannot see, such as the environment type, a quota, or a total across resources it does not own, describe the rule in the variable and leave enforcement to the API.
+- When the provider floor changes, recheck every validation and precondition derived from the old schema.
 - Optional object descriptions must explain conditional field requirements and prohibited combinations.
 
 For every optional object, validate all of the following where applicable:
@@ -74,13 +77,18 @@ For every optional object, validate all of the following where applicable:
 
 - Set a Terraform version and provider constraints that avoid untested major upgrades.
 - Do not set a floor higher than the features require. A sibling module's constraint is not a justification.
+- Set the root floor from the root module's own arguments. A sibling primitive used only by `examples/complete/` does not raise the root floor; the example declares that higher floor instead.
 - The floor must be real: if the module uses a resource argument or behavior introduced in a specific provider release, the constraint must require at least that release.
 - Prefer an explicit comment in `versions.tf` when a floor exists because of a particular feature.
 - Keep provider configuration out of the root module; examples own provider configuration.
 
-## AWS API Reference Check
+## Service Documentation Check
 
-For AWS primitive modules, consult the official AWS service API reference when practical. Derive validation ranges, enum values, formats, and cross-field constraints from the API reference and provider schema. If no suitable public API reference is found after a reasonable search, skip the step and do not retry indefinitely.
+Derive validation ranges, enum values, formats, and cross-field constraints from the provider schema and the cloud service's own documentation. If no suitable public reference is found after a reasonable search, skip the step and do not retry indefinitely.
+
+- AWS: consult the official AWS service API reference when practical.
+- Azure: consult the Microsoft Learn page for the service and its REST API reference. Azure often documents limits that apply to a total across nested items, such as the summed CPU and memory of every container in a Container App.
+- GCP: consult the service's API reference.
 
 ## Example Requirements
 

@@ -16,6 +16,7 @@ Primitive tests must prove the Terraform interface and the cloud resource behavi
 - Assert specific expected values from Terraform inputs, computed naming outputs, provider API responses, or known example configuration.
 - Avoid `assert.NotEmpty` and `require.NotEmpty` when the value is knowable.
 - Use `require` for attributes that must exist before deeper assertions.
+- Compare cloud resource IDs the way the cloud does. Azure resource IDs are case-insensitive, and the ARM SDK can return a resource-type segment in a different case from the Terraform output (`containerapps` versus `containerApps`), so compare them with `strings.EqualFold`.
 - Verify security settings through the cloud provider API when the module configures encryption, policies, public access controls, identity, or networking.
 - For a required security API attribute, use `require.True(t, ok, ...)` before assertions rather than an `if ok` branch that silently skips a missing setting.
 - The limited valid uses of `NotEmpty` are checking a collection before indexing it or verifying a required environment variable. Configuration and API-returned values should have known expected values.
