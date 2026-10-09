@@ -9,7 +9,7 @@ Use this reference when converting the skeleton into a primitive module or revie
 3. Implement `versions.tf`, `variables.tf`, `main.tf`, and `outputs.tf` using the primitive standards. Set Terraform and provider floors from the features used by those files, not from a generic major range.
 4. Build `examples/complete/` with its Terraform files, an accurate README, resource naming, and any deployable prerequisite resources.
 5. Before writing cloud-backed tests, run the available example validation flow: formatting and linting, init, validate, plan, apply, plan again, and destroy. The second plan must report no changes, including no `Changes to Outputs`; output-only drift fails the functional test's empty-plan check. Resolve failures before continuing when credentials and environment access permit. Do not open a pull request without at least a successful example plan. If apply was not possible, say so in the pull request.
-6. Add Terratest coverage, then run the Go quality checks in the testing reference before cloud-backed test execution.
+6. Add the plan-only validation tests in the testing reference and run `terraform test`. Then add Terratest coverage and run the Go quality checks in the testing reference before cloud-backed test execution.
 7. Build root `README.md` from `TEMPLATED_README.md`, replace the module-specific title and overview, add usage, retain the development boilerplate, and populate terraform-docs.
 8. Run the cleanup and completion checks below.
 
@@ -34,6 +34,7 @@ Before completion:
 ## Completion Checklist
 
 - Root variables have explicit types, descriptions, required validation, and coherent optional objects.
+- The resource name validation encodes the service's documented naming rule, and `tests/validation.tftest.hcl` covers each validation with passing and failing cases.
 - Root and example `versions.tf` floors require Terraform and provider versions that support every feature the module uses.
 - Root outputs exist in the provider schema, have descriptions, and match the intended composition interface.
 - The complete example passes every root variable through, exposes test-consumed outputs, and uses the secure configuration.
