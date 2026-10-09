@@ -21,6 +21,16 @@ Primitive tests must prove the Terraform interface and the cloud resource behavi
 - For a required security API attribute, use `require.True(t, ok, ...)` before assertions rather than an `if ok` branch that silently skips a missing setting.
 - The limited valid uses of `NotEmpty` are checking a collection before indexing it or verifying a required environment variable. Configuration and API-returned values should have known expected values.
 
+## Validation Tests
+
+Every root variable validation needs a plan-only Terraform test, so a wrong rule fails before review instead of at apply. Put them in `tests/validation.tftest.hcl`; `make check` runs `terraform test` when the file exists.
+
+- Use `mock_provider` with `command = plan`, so the tests need no cloud credentials. Running them needs Terraform 1.7 or later; this does not raise the module's floor.
+- Include one run that sets only the required variables and leaves every optional input at its default. A plan with null optional inputs exercises the null paths in validations and dynamic blocks that the example, which sets everything, never reaches.
+- For each validation, add a run with an input that passes, and one run per documented rule with an input that breaks only that rule, using `expect_failures = [var.<name>]`.
+- For a resource name, cover each part of the service's rule: a disallowed first character, a disallowed last character, an uppercase or otherwise disallowed character, any banned sequence such as `--`, one character under the minimum length, and one over the maximum.
+- Take the failing inputs from the service documentation, not from the regex being tested. A case derived from the regex only proves that the regex matches itself.
+
 ## Readonly Tests
 
 Readonly tests must not create, update, invoke mutating operations, publish messages, write objects, or alter state.
@@ -61,3 +71,4 @@ Functional tests should exercise the resource behavior, not just Terraform outpu
 - Readonly coverage performs no writes, invocation, publishing, resource creation, updates, or state changes.
 - Security-critical provider attributes are required and compared to expected values.
 - Test-consumed Terraform outputs exist in `examples/complete/outputs.tf`.
+- `tests/validation.tftest.hcl` has a required-inputs-only plan and a failing case for each documented rule of every validated variable, and `terraform test` passes.
