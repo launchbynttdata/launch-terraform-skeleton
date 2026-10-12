@@ -25,7 +25,9 @@ Primitive tests must prove the Terraform interface and the cloud resource behavi
 
 Every root variable validation needs a plan-only Terraform test, so a wrong rule fails before review instead of at apply. Put them in `tests/validation.tftest.hcl`; `make check` runs `terraform test` when the file exists.
 
-- Use `mock_provider` with `command = plan`, so the tests need no cloud credentials. Running them needs Terraform 1.7 or later; this does not raise the module's floor.
+Pull request CI does not run these tests yet: the reusable Terraform check runs `make lint` and `make test`, not `make tfmodule/test`. Run `make check` or `terraform test` locally, and state in the pull request that `terraform test` passed.
+
+- Use `mock_provider` with `command = plan`, so the tests need no cloud credentials. Running them needs Terraform 1.7 or later; this does not raise the module's floor, with one exception. Terraform 1.6 `validate` reads `tests/` and rejects `mock_provider` as an unsupported block type, so a module whose floor is 1.6 fails the version-floor check with this file. Raise such a floor to 1.7, or lower it to 1.5 if the module's features allow.
 - Include one run that sets only the required variables and leaves every optional input at its default. A plan with null optional inputs exercises the null paths in validations and dynamic blocks that the example, which sets everything, never reaches.
 - For each validation, add a run with an input that passes, and one run per documented rule with an input that breaks only that rule, using `expect_failures = [var.<name>]`.
 - For a resource name, cover each part of the service's rule: a disallowed first character, a disallowed last character, an uppercase or otherwise disallowed character, any banned sequence such as `--`, one character under the minimum length, and one over the maximum.
