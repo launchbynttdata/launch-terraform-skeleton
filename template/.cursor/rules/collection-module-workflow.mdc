@@ -1,0 +1,17 @@
+---
+description: "Terraform collection module creation, cleanup, validation, testing, and documentation workflow"
+alwaysApply: false
+---
+
+# Collection Module Workflow
+
+Use this rule when creating or modifying a `tf-<provider>-module_collection-<service>` repository.
+
+Follow `.agents/skills/collection-module/SKILL.md`.
+
+Read these references only as needed:
+
+- `.agents/references/shared/terraform-module-standards.md`
+- `.agents/references/collection/standards.md`
+- `.agents/references/collection/testing.md`
+- `.agents/references/collection/release-history.md`

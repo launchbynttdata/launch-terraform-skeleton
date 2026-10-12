@@ -9,7 +9,7 @@ paths:
 
 # Terraform Module Files
 
-- Keep module type boundaries clear: primitives wrap one resource type; reference architectures compose complete patterns.
+- Keep module type boundaries clear: primitives wrap one resource type; collections compose one deployable service; reference architectures compose complete patterns.
 - Keep examples synchronized with root variables, outputs, and README usage snippets.
 - Prefer provider API constraints, Terraform validation blocks, and specific test assertions over loose or non-empty checks.
 - Remove skeleton placeholders and stale template references before completion.

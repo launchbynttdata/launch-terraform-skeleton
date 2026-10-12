@@ -1,6 +1,6 @@
 # Shared Terraform Module Standards
 
-These standards apply to both primitive and reference architecture modules.
+These standards apply to primitive, collection, and reference architecture modules.
 
 ## Providers
 
@@ -11,6 +11,7 @@ These standards apply to both primitive and reference architecture modules.
 ## Naming
 
 - Repository names use `tf-<provider>-module_primitive-<resource>` for primitives.
+- Repository names use `tf-<provider>-module_collection-<service>` for collections.
 - Repository names use `tf-<provider>-module_reference-<architecture>` for reference architectures.
 - Terraform variables use `snake_case`.
 - Avoid Terraform reserved names for variables, including `source`, `target`, `version`, `count`, `for`, and `provider`.
