@@ -2,6 +2,15 @@
 
 This file preserves the learnings from the previous monolithic primitive module guide.
 
+## 2.3
+
+- Validate resource names against the service's documented naming rule. The first container_app primitive used a generic pattern that accepted names Azure rejects at apply, such as `1app` and `a--b`.
+- Cover every root variable validation with plan-only `terraform test` cases in `tests/validation.tftest.hcl`, using `mock_provider` and failing inputs taken from the service documentation. Include a plan with only required inputs. On the same module, that plan found a dynamic block that read an attribute of a null optional object, a failure the fully populated example never reached.
+- `try()` does not supply a default for an omitted `optional()` attribute, which is present with a null value. Test it with a conditional, or use `coalesce()`.
+- `||` short-circuits only from Terraform 1.12, so the 2.2 note about evaluating both sides applies to modules whose declared range includes earlier releases.
+- Check banned name sequences with `!can(regex(...))`, which works on every Terraform version; `strcontains()` needs 1.5. A module with a Terraform 1.6 floor fails `validate` once it has a `mock_provider` test file.
+- Pull request CI does not run `terraform test`; authors run it locally and say so in the pull request.
+
 ## 2.2
 
 - Nullable validations need conditional expressions, because Terraform evaluates both sides of `||`. Validate only rules the module can evaluate fully, from the provider schema at the declared floor and current service documentation; leave context-dependent service limits to the API. The service documentation check now covers Azure and GCP, not only AWS.

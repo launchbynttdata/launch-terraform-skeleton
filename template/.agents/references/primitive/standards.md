@@ -49,9 +49,10 @@ go.sum
 - Required infrastructure inputs have no default. Optional flags should default to `false` or the safer option. Tags or labels should default to an empty map.
 - Use `object()` with `optional()` attributes for structured optional configuration.
 - Add validation for provider-enforced numeric bounds, enums, formats, mutually exclusive inputs, and cross-field requirements.
-- Nullable validation expressions must avoid evaluating null values, for example with a conditional expression. Use `try()` for nested optional object attributes.
-- Terraform evaluates both sides of `||`, so `var.x == null || var.x >= 0` fails at plan when `var.x` is null. Write `var.x == null ? true : var.x >= 0`. The same applies to attribute access on a null object, such as `var.obj.field` when `var.obj` is null.
+- Nullable validation expressions must avoid evaluating null values, for example with a conditional expression. `try()` only catches errors: an omitted `optional()` attribute is present with a null value, so `try(var.obj.field, "x")` returns null, not `"x"`. Test it with `try(var.obj.field, null) == null ? true : …`, or use `coalesce()` for a default.
+- Before Terraform 1.12, `||` evaluates both sides, and a module must work across its declared range, so `var.x == null || var.x >= 0` fails at plan when `var.x` is null. Write `var.x == null ? true : var.x >= 0`. The same applies to attribute access on a null object, such as `var.obj.field` when `var.obj` is null.
 - Validate a rule only when the module can evaluate all of it. Take bounds from the provider schema at the declared floor and from current service documentation, not from an older provider release. When a service rule depends on context the module cannot see, such as the environment type, a quota, or a total across resources it does not own, describe the rule in the variable and leave enforcement to the API.
+- Validate the resource name against the service's documented naming rule, not a generic pattern. Encode every part of it: allowed characters, the first and last character, the length range, and banned sequences. Terraform regular expressions have no lookahead, so check a banned sequence such as `--` with a separate condition, for example `!can(regex("--", var.name))`. Avoid `strcontains()` unless the root floor is at least Terraform 1.5; earlier releases reject it as an unknown function. Restate the full rule in the variable description and error message.
 - When the provider floor changes, recheck every validation and precondition derived from the old schema.
 - Optional object descriptions must explain conditional field requirements and prohibited combinations.
 
@@ -86,9 +87,9 @@ For every optional object, validate all of the following where applicable:
 
 Derive validation ranges, enum values, formats, and cross-field constraints from the provider schema and the cloud service's own documentation. If no suitable public reference is found after a reasonable search, skip the step and do not retry indefinitely.
 
-- AWS: consult the official AWS service API reference when practical.
-- Azure: consult the Microsoft Learn page for the service and its REST API reference. Azure often documents limits that apply to a total across nested items, such as the summed CPU and memory of every container in a Container App.
-- GCP: consult the service's API reference.
+- AWS: consult the official AWS service API reference when practical. Name constraints are listed on the create action's name parameter.
+- Azure: consult the Microsoft Learn page for the service and its REST API reference. Azure often documents limits that apply to a total across nested items, such as the summed CPU and memory of every container in a Container App. Take name rules from the resource's row in [Naming rules and restrictions for Azure resources](https://learn.microsoft.com/azure/azure-resource-manager/management/resource-name-rules) and check them against the service's own documentation; the two can differ, and the stricter rule wins.
+- GCP: consult the service's API reference. Name constraints are listed on the resource's `name` field.
 
 ## Example Requirements
 
@@ -104,6 +105,7 @@ Derive validation ranges, enum values, formats, and cross-field constraints from
 ## Common Anti-Patterns
 
 - Wrapping more than one primary resource type.
+- Validating a resource name with a generic pattern instead of the service's documented naming rule.
 - Using `assert.NotEmpty` where a specific expected value is known.
 - Copying functional tests into readonly tests unchanged.
 - Leaving an empty terraform-docs block.
