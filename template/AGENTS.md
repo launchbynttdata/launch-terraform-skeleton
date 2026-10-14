@@ -6,7 +6,7 @@ This repository follows the Launch Terraform module standards. Keep this file sm
 
 - Read the current files before making changes. Do not assume the generated template still matches this repository.
 - Make the smallest change that satisfies the requested outcome.
-- Keep primitive modules and reference architecture modules distinct.
+- Keep primitive, collection, and reference architecture modules distinct.
 - Prefer clear Terraform, explicit variable types, useful descriptions, and validation for constrained inputs.
 - Treat examples and tests as part of the public contract. Update them with implementation changes.
 - Do not preserve skeleton placeholders, TODOs, or copied template names in completed modules.
@@ -18,12 +18,14 @@ This repository follows the Launch Terraform module standards. Keep this file sm
 ## Module Types
 
 - Primitive modules wrap one cloud resource type and expose a reusable, low-opinion interface.
+- Collection modules compose released Launch modules into one independently deployable cloud service, without making platform-wide network, security, or regional decisions.
 - Reference architecture modules compose primitives and selected mature community modules into opinionated infrastructure patterns.
 - If the requested work does not clearly identify the module type, inspect the repository name and module structure before proceeding.
 
 ## Task Routing
 
 - For primitive module creation or cleanup, use `.agents/skills/primitive-module/SKILL.md`.
+- For collection module creation or cleanup, use `.agents/skills/collection-module/SKILL.md`.
 - For reference architecture creation or cleanup, use `.agents/skills/reference-architecture/SKILL.md`.
 - For shared Terraform standards, read `.agents/references/shared/terraform-module-standards.md`.
 - For long examples, historical rationale, and provider-specific notes, read only the reference files routed by the selected skill.

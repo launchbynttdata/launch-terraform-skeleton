@@ -2,6 +2,10 @@
 
 This file preserves the learnings from the previous monolithic primitive module guide.
 
+## 2.4
+
+- Before Terraform 1.12, `&&` evaluates both sides, the same as `||`. The shared standards now carry that rule for every module type.
+
 ## 2.3
 
 - Validate resource names against the service's documented naming rule. The first container_app primitive used a generic pattern that accepted names Azure rejects at apply, such as `1app` and `a--b`.
