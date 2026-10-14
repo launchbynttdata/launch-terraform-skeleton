@@ -2,6 +2,10 @@
 
 This file preserves the learnings from the previous monolithic primitive module guide.
 
+## 2.3
+
+- `&&` evaluates both sides, the same as `||`. The shared standards now carry that rule for every module type.
+
 ## 2.2
 
 - Nullable validations need conditional expressions, because Terraform evaluates both sides of `||`. Validate only rules the module can evaluate fully, from the provider schema at the declared floor and current service documentation; leave context-dependent service limits to the API. The service documentation check now covers Azure and GCP, not only AWS.

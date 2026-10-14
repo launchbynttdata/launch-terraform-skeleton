@@ -41,6 +41,20 @@ CI excludes the readonly binary from its test command, so both requirements must
 - Use `require` for API response fields that must exist before asserting nested values, including required security attributes.
 - Compare cloud resource IDs the way the cloud does. Azure resource IDs are case-insensitive and the SDK can return segments in a different case from Terraform, so compare them with `strings.EqualFold`.
 
+## Where Expected Values Come From
+
+- Take the expected value from the example input, a prerequisite the example created, a name the test calculates, or the cloud API.
+- Do not compare a collection output with another output that is only a copy of the first. That assertion passes even when the collection returns the wrong value.
+- Do not decide what was expected by looking at the result. If the example creates a role assignment, require that key. Treat an empty result as success only when the example says it creates nothing.
+
+## Negative Plans
+
+- For every validation that combines fields or reads another variable, plan one invalid input, including an omitted or null optional attribute.
+- The plan must fail with that validation's `error_message`.
+- The plan is not done when it also reports `Invalid function argument`, `Invalid index`, or a missing map key. Those mean an expression evaluated null before validation could explain the input.
+- These plans do not need cloud credentials when the failure is in variable validation.
+- Do not run `go test ./...`, `go test ./tests/post_deploy_functional`, or `go test ./tests/post_deploy_functional_readonly` to check a validation. Those commands apply real infrastructure. `go test ./tests/testimpl` is the local Go check.
+
 ## Go Quality
 
 - Keep provider SDK clients and shared helpers in `tests/testimpl/`.
@@ -53,5 +67,7 @@ CI excludes the readonly binary from its test command, so both requirements must
 - Both the create and existing paths are deployed and asserted when the module has optional dependencies.
 - Generated and overridden names are asserted against exact values.
 - No configuration assertion uses `NotEmpty` when a specific value is available.
+- Expected values come from inputs, prerequisites, calculated names, or the cloud API, not from a copy of the output under test.
+- Each cross-field validation has a negative plan that fails with its own error message and does not also report an invalid function argument or index.
 - Functional and readonly suites call different implementation functions, and the readonly suite uses `lib.RunNonDestructiveTest` with a `TestComposable*` function.
 - `IS_TERRAFORM_IDEMPOTENT_APPLY` is not turned off.

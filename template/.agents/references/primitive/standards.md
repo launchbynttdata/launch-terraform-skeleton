@@ -50,7 +50,7 @@ go.sum
 - Use `object()` with `optional()` attributes for structured optional configuration.
 - Add validation for provider-enforced numeric bounds, enums, formats, mutually exclusive inputs, and cross-field requirements.
 - Nullable validation expressions must avoid evaluating null values, for example with a conditional expression. Use `try()` for nested optional object attributes.
-- Terraform evaluates both sides of `||`, so `var.x == null || var.x >= 0` fails at plan when `var.x` is null. Write `var.x == null ? true : var.x >= 0`. The same applies to attribute access on a null object, such as `var.obj.field` when `var.obj` is null.
+- Terraform evaluates both sides of `&&` and `||`, so `var.x != null && length(var.x) > 0` and `var.x == null || var.x >= 0` both fail at plan when `var.x` is null. Write `var.x == null ? true : length(var.x) > 0`. The same applies to attribute access on a null object, such as `var.obj.field` when `var.obj` is null. The shared standards state this rule for every module type.
 - Validate a rule only when the module can evaluate all of it. Take bounds from the provider schema at the declared floor and from current service documentation, not from an older provider release. When a service rule depends on context the module cannot see, such as the environment type, a quota, or a total across resources it does not own, describe the rule in the variable and leave enforcement to the API.
 - When the provider floor changes, recheck every validation and precondition derived from the old schema.
 - Optional object descriptions must explain conditional field requirements and prohibited combinations.

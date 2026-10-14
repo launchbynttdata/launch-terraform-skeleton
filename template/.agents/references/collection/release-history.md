@@ -7,3 +7,10 @@
 - The root generates names through the resource naming module. Created components accept a name override; components supplied by identifier take no name.
 - Root floors must cover every composed module's `required_version`, and the provider constraint must lie inside every composed module's constraint.
 - Tests assert the relationships between composed resources, deploy every example, and keep the idempotent-apply check enabled.
+
+Revised after the first collection built with this guidance, `tf-azurerm-module_collection-container_app_environment`:
+
+- `&&` evaluates both sides, the same as `||`. Calls such as `length`, `startswith`, and `contains` belong inside a conditional.
+- An invalid input must still let locals and module arguments evaluate, so the caller sees the validation message.
+- A test expectation comes from an independent input or calculation. A missing result is not evidence that nothing was expected.
+- `go test ./...` deploys the examples. The local Go check is `go test ./tests/testimpl`.

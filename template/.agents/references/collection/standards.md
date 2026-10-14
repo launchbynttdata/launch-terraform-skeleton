@@ -81,7 +81,9 @@ variable "log_analytics_workspace" {
   nullable = false
 
   validation {
-    condition     = var.log_analytics_workspace.create ? var.log_analytics_workspace.existing_id == null : var.log_analytics_workspace.existing_id != null && var.log_analytics_workspace.name == null
+    condition = var.log_analytics_workspace.create ? var.log_analytics_workspace.existing_id == null : (
+      var.log_analytics_workspace.existing_id == null ? false : var.log_analytics_workspace.name == null
+    )
     error_message = "Set existing_id only when create is false, and name only when create is true."
   }
 }
@@ -91,7 +93,8 @@ variable "log_analytics_workspace" {
 - Call the module with `count = var.<dependency>.create ? 1 : 0` and resolve the value once in a local, for example `log_analytics_workspace_id = var.log_analytics_workspace.create ? module.log_analytics_workspace[0].id : var.log_analytics_workspace.existing_id`.
 - Downstream module calls and outputs read only that local, never `module.<name>[0]` directly.
 - Choose `count` or `for_each` for each module call once. Changing it later changes resource addresses and destroys and recreates the resources unless `moved` blocks are added.
-- Write validations with conditional expressions, not `||`. Terraform evaluates both sides of `||`, so a null operand fails at plan.
+- Write validations with conditional expressions. Terraform evaluates both sides of `&&` and `||`, so `existing_id != null && startswith(existing_id, "/subscriptions/")` still calls `startswith` on null. Write `existing_id == null ? false : startswith(existing_id, "/subscriptions/")`. Follow the input-validation rules in the shared Terraform module standards.
+- An invalid input is still evaluated. Locals, module arguments, and `for_each` must not index a map with an optional key or pass null into a required argument, or the caller sees `Invalid function argument` or `Invalid index` instead of the validation message.
 
 ## Repeated Items
 
@@ -112,7 +115,8 @@ variable "log_analytics_workspace" {
 
 - Give every variable an explicit type and a useful description.
 - Use high-level service variables rather than re-exposing every argument of every composed primitive. Pass through what a typical deployment of the service needs.
-- Validate constrained values, mutually exclusive fields, and fields that must be provided together, following the validation rules in the primitive standards.
+- Validate constrained values, mutually exclusive fields, and fields that must be provided together, following the input-validation rules in the shared Terraform module standards.
+- When a description says a setting is valid only when another input is set, add a validation for that rule. If only the cloud API can check it, say so in the description.
 - Do not add a validation that a composed primitive already enforces unless the collection needs a stricter rule.
 
 ## Ordering
@@ -145,6 +149,7 @@ variable "log_analytics_workspace" {
 - Pinning a composed module to a version whose interface was not read.
 - A provider constraint that excludes a composed module's required provider range.
 - Separate `create_*` and `existing_*` variables validated against each other at a Terraform floor below 1.9.
+- A validation that fails with `Invalid function argument` or `Invalid index` because `&&`, `||`, or a map index evaluated a null.
 - Outputs that reference `module.<name>[0]` and fail on the existing path.
 - `for_each` keyed by generated names, resource IDs, or sensitive values.
 - Turning off `IS_TERRAFORM_IDEMPOTENT_APPLY` to hide a non-empty second plan.

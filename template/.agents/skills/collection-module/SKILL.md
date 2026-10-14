@@ -30,7 +30,7 @@ A collection composes released Launch modules into one independently deployable 
 6. Remove skeleton remnants and rename template resources, tests, imports, package names, and README content.
 7. Implement the root module from module calls only, following the composition, optional-dependency, naming, and output rules in the collection standards.
 8. Build `examples/complete/` for the path where the module creates its dependencies. When the module has any optional dependency, add `examples/existing_dependencies/` for the path where the caller supplies them.
-9. Validate every example before writing tests: formatting and linting, init, validate, plan, apply, a second plan that reports no changes including no `Changes to Outputs`, and destroy. Do not open a pull request without at least a successful plan of every example; if apply was not possible, say so in the pull request.
+9. Validate every example before writing tests: formatting and linting, init, validate, plan, apply, a second plan that reports no changes including no `Changes to Outputs`, and destroy. Plan one invalid input for each cross-field validation and confirm the custom error message, as the collection testing reference describes. Do not open a pull request without at least a successful plan of every example; if apply was not possible, say so in the pull request. Do not use `go test ./...` as a local check; that command applies the examples.
 10. Set the latest supported Go baseline and refresh the complete Go dependency graph as required by the shared Terraform module standards.
 11. Add Terratest coverage that verifies each composed resource and the relationships between them, following the collection testing reference.
 12. Build root `README.md` from `TEMPLATED_README.md`, keep the classification table in the overview, preserve the skeleton development sections, and populate terraform-docs.
@@ -48,6 +48,8 @@ A collection composes released Launch modules into one independently deployable 
 - Outputs are prefixed by component, resolve to the same value whether a dependency was created or supplied, and are marked sensitive when a composed output is sensitive.
 - `examples/complete` passes through every root variable, and the examples together exercise the create and existing paths, a generated name, and a name override.
 - Every example applies cleanly and its second plan reports no changes, with `IS_TERRAFORM_IDEMPOTENT_APPLY` left enabled.
-- Tests assert the relationships between composed resources, not only each resource on its own.
+- Tests assert the relationships between composed resources, not only each resource on its own. Expected values come from inputs, prerequisites, or calculated names, not from a copy of the output under test.
+- Cross-field validations guard null-unsafe calls with conditionals. A negative plan for each one fails with the validation message and does not also report `Invalid function argument` or `Invalid index`.
+- Every description that says a value is valid only when another input is set has a validation, or it says that the cloud API enforces the rule.
 - Readonly tests use `lib.RunNonDestructiveTest` with a `TestComposable*` implementation function.
 - No skeleton resources, stale imports, TODO placeholders, or template names remain.
