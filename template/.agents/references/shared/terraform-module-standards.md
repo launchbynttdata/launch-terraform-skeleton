@@ -29,8 +29,8 @@ These standards apply to primitive, collection, and reference architecture modul
 
 ## Input Validation
 
-- Before Terraform 1.12, `&&` and `||` evaluate both sides. From 1.12 they short-circuit. A module must work on every version in its declared range, so a null-safe comparison on one side is not enough unless the floor is at least 1.12.
-- Guard `length`, `startswith`, `contains`, `strcontains`, and map indexing with a conditional, so the call runs only after the value is known to be non-null. Write `var.name == null ? false : length(var.name) > 0`, not `var.name != null && length(var.name) > 0`.
+- Before Terraform 1.12, `&&` and `||` evaluate both sides. From 1.12 they short-circuit: `&&` rejects null and `||` allows it. A module must work on every version in its declared range.
+- Guard `length`, `startswith`, `contains`, `strcontains`, and map indexing with a conditional, so the call runs only after the value is known to be non-null. `var.name == null ? false : length(var.name) > 0` rejects null. `var.name == null ? true : length(var.name) > 0` allows null, and that is only the `||` case. Use `&&` or `||` for this only when `required_version` is `~> 1.12`, and name that reason in `versions.tf`.
 - A validation that refers to another variable needs Terraform 1.9 or later. Raise the module floor when the rule needs that, and name the reason in `versions.tf`.
 - Validation does not stop Terraform from evaluating locals, module arguments, and `for_each`. Those expressions must still evaluate when the input is invalid, so the custom `error_message` is the failure. Do not index a map with an optional key, or pass null into a required argument, unless a conditional excludes that case.
 - When a description says a value is allowed only when another input is set, enforce that with validation. If only the cloud API can check the rule, say that in the description.

@@ -20,7 +20,7 @@ Classify every candidate resource before writing Terraform:
 Worked example, Azure Container Apps:
 
 - `tf-azurerm-module_collection-container_app_environment`: the Container Apps environment is core; the resource group and Log Analytics workspace are optional dependencies; the virtual network and infrastructure subnet are platform choices supplied by ID.
-- `tf-azurerm-module_collection-container_app`: the container apps are core; the user-assigned identity, the container registry, and the `AcrPull` role assignment are optional dependencies; the environment is supplied by ID.
+- `tf-azurerm-module_collection-container_apps`: the container apps are core; the user-assigned identity, the container registry, and the `AcrPull` role assignment are optional dependencies; the environment is supplied by ID.
 
 ## Required Structure
 
