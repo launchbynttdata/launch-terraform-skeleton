@@ -10,7 +10,7 @@
 
 Revised after the first collection built with this guidance, `tf-azurerm-module_collection-container_app_environment`:
 
-- `&&` evaluates both sides, the same as `||`. Calls such as `length`, `startswith`, and `contains` belong inside a conditional.
+- Before Terraform 1.12, `&&` evaluates both sides, the same as `||`. Calls such as `length`, `startswith`, and `contains` belong inside a conditional unless the module floor is at least 1.12.
 - An invalid input must still let locals and module arguments evaluate, so the caller sees the validation message.
 - A test expectation comes from an independent input or calculation. A missing result is not evidence that nothing was expected.
 - `go test ./...` deploys the examples. The local Go check is `go test ./tests/testimpl`.

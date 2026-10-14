@@ -93,7 +93,7 @@ variable "log_analytics_workspace" {
 - Call the module with `count = var.<dependency>.create ? 1 : 0` and resolve the value once in a local, for example `log_analytics_workspace_id = var.log_analytics_workspace.create ? module.log_analytics_workspace[0].id : var.log_analytics_workspace.existing_id`.
 - Downstream module calls and outputs read only that local, never `module.<name>[0]` directly.
 - Choose `count` or `for_each` for each module call once. Changing it later changes resource addresses and destroys and recreates the resources unless `moved` blocks are added.
-- Write validations with conditional expressions. Terraform evaluates both sides of `&&` and `||`, so `existing_id != null && startswith(existing_id, "/subscriptions/")` still calls `startswith` on null. Write `existing_id == null ? false : startswith(existing_id, "/subscriptions/")`. Follow the input-validation rules in the shared Terraform module standards.
+- Write validations with conditional expressions. Before Terraform 1.12, `&&` and `||` evaluate both sides, so `existing_id != null && startswith(existing_id, "/subscriptions/")` still calls `startswith` on null. Write `existing_id == null ? false : startswith(existing_id, "/subscriptions/")`. Follow the input-validation rules in the shared Terraform module standards.
 - An invalid input is still evaluated. Locals, module arguments, and `for_each` must not index a map with an optional key or pass null into a required argument, or the caller sees `Invalid function argument` or `Invalid index` instead of the validation message.
 
 ## Repeated Items
