@@ -11,4 +11,4 @@ jobs:
       contents: read
       pull-requests: write
       statuses: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-conventional-commit-title.yml@ace9800af712a9d30230950becf5725deaf8518c
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-pr-conventional-commit-title.yml@5398ca6b022453afbddfc9ed857398588669197b
