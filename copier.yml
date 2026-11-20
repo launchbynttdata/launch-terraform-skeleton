@@ -20,3 +20,9 @@ _tasks:
   - command: "rm -f .github/workflows/pull-request-terraform-check-aws.yml"
   - command: "rm -f .github/workflows/pull-request-terraform-check-azure.yml"
   - command: "rm -f .lcafenv"
+
+# A task's deletion of a tracked file is undone by copier's update merge, so
+# removals that must reach already-converted repositories are migrations, which
+# run after the merge on every update.
+_migrations:
+  - command: "rm -f .github/workflows/increment-tagged-version.yaml"
