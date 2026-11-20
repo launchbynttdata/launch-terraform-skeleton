@@ -14,6 +14,7 @@ _exclude:
 _tasks:
   # Remove the legacy TF workflows if they exist
   - command: "rm -f .github/workflows/increment_tagged_version.yaml"
+  - command: "rm -f .github/workflows/increment-tagged-version.yaml"
   - command: "rm -f .github/workflows/lint-terraform.yaml"
   - command: "rm -f .github/workflows/validate-branch-name.yaml"
   # Remove the cloud-specific TF workflows if they exist
@@ -22,7 +23,8 @@ _tasks:
   - command: "rm -f .lcafenv"
 
 # A task's deletion of a tracked file is undone by copier's update merge, so
-# removals that must reach already-converted repositories are migrations, which
-# run after the merge on every update.
+# removals that must reach already-converted repositories are also migrations,
+# which run after the merge on every update. Migrations don't run on a first
+# copy or a recopy, so the same removal stays in _tasks.
 _migrations:
   - command: "rm -f .github/workflows/increment-tagged-version.yaml"
