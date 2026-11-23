@@ -11,7 +11,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@9d4ce89cb57517cadc039f35edba5962a29987d6
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@d7ebeca94f25f42dd3ac6f657c6594001f52ac92
     with:
       prerelease_identifier: "rc"
       release_environment: "release"
@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@9d4ce89cb57517cadc039f35edba5962a29987d6
+    uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@d7ebeca94f25f42dd3ac6f657c6594001f52ac92
     with:
       publish: false
     secrets: inherit # pragma: allowlist secret
