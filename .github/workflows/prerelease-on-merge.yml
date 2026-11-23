@@ -14,6 +14,7 @@ jobs:
     uses: launchbynttdata/launch-workflows/.github/workflows/reusable-release-on-merge.yml@9d4ce89cb57517cadc039f35edba5962a29987d6
     with:
       prerelease_identifier: "rc"
+      release_environment: "release"
     secrets: inherit # pragma: allowlist secret
 
   release-draft-on-merge:
